@@ -16,7 +16,7 @@ export async function GET(request: Request) {
       .from("maintenance_tasks")
       .select("*")
       .eq("hotel", hotel)
-      .eq("status", "Resuelta") // 👈 muy importante: misma capitalización
+      .ilike("status", "%resuelta%") // 🔍 busca sin importar mayúsculas/minúsculas
       .order("resolved_at", { ascending: false });
 
     if (error) throw error;

@@ -101,9 +101,9 @@ export default function PendingIssues() {
         }),
       })
 
-      if (response.ok) {
-        setIssues(issues.filter((issue) => issue.id !== resolutionDialog.issueId))
-        setResolutionDialog({ open: false, issueId: null })
+    if (response.ok) {
+  setIssues((prev) => prev.filter((issue) => issue.id !== resolutionDialog.issueId));
+  setResolutionDialog({ open: false, issueId: null })
       }
     } catch (error) {
       console.error("Error updating status:", error)
