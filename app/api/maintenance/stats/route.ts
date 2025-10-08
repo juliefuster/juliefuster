@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server"
-import { supabaseServer } from "@/lib/supabase/server"
+import { dataSource } from "../../../../lib/data-source"
 
 export async function GET(request: Request) {
-  console.log("[SERVER] [API] /maintenance/stats called")
+  console.log("[v0] [API] /maintenance/stats called")
 
   try {
     const { searchParams } = new URL(request.url)
@@ -12,23 +12,12 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Missing hotel parameter" }, { status: 400 })
     }
 
-    const { data, error } = await supabaseServer
-      .from("maintenance_tasks")
-      .select("status")
-      .eq("hotel", hotel)
+    const stats = await dataSource.getStats(hotel)
+    console.log("[v0] [API] Stats retrieved:", stats)
 
-    if (error) {
-      console.error("[Supabase error]", error)
-      return NextResponse.json({ error: "Database query failed", details: error.message }, { status: 500 })
-    }
-
-    const total = data.length
-    const pending = data.filter((t) => t.status?.toLowerCase() === "pendiente").length
-    const resolved = data.filter((t) => t.status?.toLowerCase() === "resuelto").length
-
-    return NextResponse.json({ total, pending, resolved })
+    return NextResponse.json(stats)
   } catch (err: any) {
-    console.error("[API ERROR]", err)
+    console.error("[v0] [API ERROR]", err)
     return NextResponse.json({ error: "Internal server error", details: err.message }, { status: 500 })
   }
 }

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { supabase } from "@/lib/supabase/client"
+import { dataSource } from "../../../../lib/data-source"
 
 export async function GET(request: Request) {
   try {
@@ -13,31 +13,12 @@ export async function GET(request: Request) {
 
     const rooms = roomsParam.split(",")
 
-    const { data, error } = await supabase
-      .from("fumigation_records")
-      .select("room, date, status")
-      .eq("hotel", hotel)
-
-    if (error) throw error
-
-    // Calcula el estado de cada habitación (simple ejemplo)
-    const today = new Date()
-    const status = rooms.map((room) => {
-      const record = data.find((r) => r.room === room)
-      if (!record) return { room, status: "overdue" }
-
-      const diffDays = (today.getTime() - new Date(record.date).getTime()) / (1000 * 60 * 60 * 24)
-      if (diffDays < 75) return { room, status: "upToDate" }
-      if (diffDays < 90) return { room, status: "upcoming" }
-      return { room, status: "overdue" }
-    })
+    // Get fumigation status from data source (with fallback to mock data)
+    const status = await dataSource.getFumigationStatus(hotel, rooms)
 
     return NextResponse.json(status)
   } catch (err: any) {
-    console.error("Error fetching fumigation status:", err.message)
-    return NextResponse.json(
-      { error: "Failed to fetch fumigation status", details: err.message },
-      { status: 500 }
-    )
+    console.error("[v0] Error in fumigation status API:", err.message)
+    return NextResponse.json([])
   }
 }

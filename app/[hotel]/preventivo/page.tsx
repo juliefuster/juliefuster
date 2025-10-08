@@ -389,10 +389,16 @@ export default function PreventiveMaintenance() {
   const fetchFumigationStatus = async () => {
     try {
       const response = await fetch(`/api/fumigation/status?hotel=${hotel}&rooms=${fumigationRooms.join(",")}`)
+      if (!response.ok) {
+        console.error("Error fetching fumigation status: HTTP", response.status)
+        setFumigationStatus([])
+        return
+      }
       const data = await response.json()
-      setFumigationStatus(data)
+      setFumigationStatus(Array.isArray(data) ? data : [])
     } catch (error) {
       console.error("Error fetching fumigation status:", error)
+      setFumigationStatus([])
     }
   }
 
@@ -545,9 +551,9 @@ export default function PreventiveMaintenance() {
   }
 
   const fumigationSummary = {
-    upToDate: fumigationStatus.filter((s) => s.status === "upToDate").length,
-    upcoming: fumigationStatus.filter((s) => s.status === "upcoming").length,
-    overdue: fumigationStatus.filter((s) => s.status === "overdue").length,
+    upToDate: Array.isArray(fumigationStatus) ? fumigationStatus.filter((s) => s.status === "upToDate").length : 0,
+    upcoming: Array.isArray(fumigationStatus) ? fumigationStatus.filter((s) => s.status === "upcoming").length : 0,
+    overdue: Array.isArray(fumigationStatus) ? fumigationStatus.filter((s) => s.status === "overdue").length : 0,
   }
 
   const getDaysUntilNextCleaning = () => {
