@@ -6,22 +6,28 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const hotel = searchParams.get("hotel");
 
+    // ⚠️ Verificación del parámetro hotel
     if (!hotel) {
       return NextResponse.json({ error: "Missing hotel parameter" }, { status: 400 });
     }
 
     const supabase = createClient();
 
+    // 🔹 Consulta de averías resueltas (insensible a mayúsculas/minúsculas)
     const { data, error } = await supabase
-      .from("maintenance_tasks")
+      .from("maintenance_tasks") // 👈 asegúrate de que este sea el nombre real de tu tabla
       .select("*")
       .eq("hotel", hotel)
-      .ilike("status", "%resuelta%") // 🔍 busca sin importar mayúsculas/minúsculas
+      .ilike("status", "%resuelta%")
       .order("resolved_at", { ascending: false });
 
-    if (error) throw error;
+    if (error) {
+      console.error("❌ Error al obtener averías resueltas:", error);
+      throw error;
+    }
 
-    const formatted = data.map((task) => ({
+    // ⚙️ Formatear resultados para el frontend
+    const formatted = (data || []).map((task) => ({
       id: task.id,
       title: task.title,
       description: task.description,
@@ -29,14 +35,19 @@ export async function GET(request: Request) {
       location: task.location,
       priority: task.priority,
       status: task.status,
-      reportedBy: task.reported_by,
+      reportedBy: task.reported_by || task.reportedBy || "Sin asignar",
       createdAt: task.created_at,
-      resolvedAt: task.resolved_at,
+      resolvedAt: task.resolved_at || null,
     }));
 
-    return NextResponse.json(formatted);
+    // 🔹 Si no hay registros, devolver lista vacía (evita errores en frontend)
+    if (!formatted.length) {
+      return NextResponse.json([], { status: 200 });
+    }
+
+    return NextResponse.json(formatted, { status: 200 });
   } catch (err: any) {
-    console.error("Error fetching resolved issues:", err.message);
+    console.error("Error fetching resolved issues:", err.message || err);
     return NextResponse.json(
       { error: "Failed to fetch resolved issues", details: err.message },
       { status: 500 }
