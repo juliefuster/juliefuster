@@ -1,42 +1,34 @@
 import { NextResponse } from "next/server"
-import { supabase } from "@/lib/supabase/client"
+import { supabaseServer } from "@/lib/supabase/server"
 
 export async function GET(request: Request) {
-  console.log("[v0] Stats API called")
+  console.log("[SERVER] [API] /maintenance/stats called")
 
   try {
     const { searchParams } = new URL(request.url)
     const hotel = searchParams.get("hotel")
-    console.log("[v0] Hotel parameter:", hotel)
 
-    // 🔹 Consulta todas las averías del hotel (si hay filtro)
-    let query = supabase.from("maintenance_tasks").select("*")
-
-    if (hotel) {
-      query = query.eq("hotel", hotel)
+    if (!hotel) {
+      return NextResponse.json({ error: "Missing hotel parameter" }, { status: 400 })
     }
 
-    const { data, error } = await query
+    const { data, error } = await supabaseServer
+      .from("maintenance_tasks")
+      .select("status")
+      .eq("hotel", hotel)
 
     if (error) {
-      console.error("❌ Error al obtener datos de Supabase:", error)
-      throw error
+      console.error("[Supabase error]", error)
+      return NextResponse.json({ error: "Database query failed", details: error.message }, { status: 500 })
     }
 
-    // 🔹 Calculamos estadísticas
     const total = data.length
-    const pending = data.filter((i) => i.status === "Pendiente").length
-    const resolved = data.filter((i) => i.status === "Resuelto").length
+    const pending = data.filter((t) => t.status?.toLowerCase() === "pendiente").length
+    const resolved = data.filter((t) => t.status?.toLowerCase() === "resuelto").length
 
-    const stats = { total, pending, resolved }
-
-    console.log("[v0] Stats retrieved:", stats)
-    return NextResponse.json(stats)
-  } catch (error) {
-    console.error("[v0] Error fetching stats:", error)
-    return NextResponse.json(
-      { error: "Error al cargar estadísticas" },
-      { status: 500 }
-    )
+    return NextResponse.json({ total, pending, resolved })
+  } catch (err: any) {
+    console.error("[API ERROR]", err)
+    return NextResponse.json({ error: "Internal server error", details: err.message }, { status: 500 })
   }
 }
