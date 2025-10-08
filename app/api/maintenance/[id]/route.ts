@@ -2,19 +2,20 @@ import { NextResponse } from "next/server"
 import { dataSource } from "../../../../lib/data-source"
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+  console.log("[v0] PATCH /api/maintenance/[id] called")
   try {
+    const { id } = params
     const body = await request.json()
-    const { status, completionDate, responsible, repairDescription } = body
+    const { status, resolutionData } = body
 
-    await dataSource.updateIssueStatus(params.id, status, {
-      completionDate,
-      responsible,
-      repairDescription,
-    })
+    console.log("[v0] Updating issue:", id, "to status:", status)
 
-    return NextResponse.json({ success: true })
+    const updatedIssue = await dataSource.updateIssueStatus(id, status, resolutionData)
+
+    console.log("[v0] Issue updated successfully")
+    return NextResponse.json(updatedIssue)
   } catch (error) {
-    console.error("Error updating issue:", error)
+    console.error("[v0] Error updating issue:", error)
     return NextResponse.json({ error: "Error al actualizar la avería" }, { status: 500 })
   }
 }

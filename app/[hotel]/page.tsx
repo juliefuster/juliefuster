@@ -24,12 +24,27 @@ export default function HotelDashboard() {
     resolved: 0,
   })
 
-  useEffect(() => {
-    fetch(`/api/maintenance/stats?hotel=${hotel}`)
-      .then((res) => res.json())
-      .then((data) => setStats(data))
-      .catch((err) => console.error("Error loading stats:", err))
-  }, [hotel])
+ useEffect(() => {
+  async function loadStats() {
+    try {
+      const res = await fetch(`/api/maintenance/stats?hotel=${hotel}`)
+
+      // Si el servidor devuelve error (no JSON)
+      if (!res.ok) {
+        const text = await res.text()
+        throw new Error(`Error del servidor: ${text}`)
+      }
+
+      const data = await res.json()
+      setStats(data)
+    } catch (err: any) {
+      console.error("Error loading stats:", err)
+    }
+  }
+
+  loadStats()
+}, [hotel])
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
