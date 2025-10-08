@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { dataSource } from "../../../../lib/data-source"
+import { supabase } from "../../../../lib/supabase/client"
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
   console.log("[v0] PATCH /api/maintenance/[id] called")
