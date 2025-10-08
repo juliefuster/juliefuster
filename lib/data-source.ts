@@ -1,9 +1,18 @@
 import { mockDb } from "./mock-db"
+import { createServerClient } from "./supabase/server"
 
 console.log("[v0] data-source module loaded")
 
+const getSupabaseClient = () => {
+  try {
+    return createServerClient()
+  } catch (error) {
+    console.error("[v0] Error creating Supabase client:", error)
+    return null
+  }
+}
+
 // Data source abstraction layer
-// Currently uses mock data, but can be extended to use Supabase or other backends
 export const dataSource = {
   // Get all issues
   getAllIssues: async (hotel?: string) => {
@@ -42,6 +51,60 @@ export const dataSource = {
   getStats: async (hotel?: string) => {
     console.log("[v0] dataSource.getStats called with hotel:", hotel)
     try {
+      const supabase = getSupabaseClient()
+      if (supabase) {
+        let query = supabase.from("maintenance_tasks").select("status", { count: "exact" })
+
+        if (hotel) {
+          query = query.eq("hotel", hotel)
+        }
+
+        const { count: total, error: totalError } = await query
+
+        if (totalError) {
+          console.error("[v0] Supabase error getting total count:", totalError)
+          return await mockDb.getStats(hotel)
+        }
+
+        // Get pending count
+        let pendingQuery = supabase
+          .from("maintenance_tasks")
+          .select("status", { count: "exact" })
+          .eq("status", "pendiente")
+        if (hotel) {
+          pendingQuery = pendingQuery.eq("hotel", hotel)
+        }
+        const { count: pending, error: pendingError } = await pendingQuery
+
+        if (pendingError) {
+          console.error("[v0] Supabase error getting pending count:", pendingError)
+          return await mockDb.getStats(hotel)
+        }
+
+        // Get resolved count
+        let resolvedQuery = supabase
+          .from("maintenance_tasks")
+          .select("status", { count: "exact" })
+          .eq("status", "resuelto")
+        if (hotel) {
+          resolvedQuery = resolvedQuery.eq("hotel", hotel)
+        }
+        const { count: resolved, error: resolvedError } = await resolvedQuery
+
+        if (resolvedError) {
+          console.error("[v0] Supabase error getting resolved count:", resolvedError)
+          return await mockDb.getStats(hotel)
+        }
+
+        const stats = {
+          total: total || 0,
+          pending: pending || 0,
+          resolved: resolved || 0,
+        }
+        console.log("[v0] dataSource.getStats returning from Supabase:", stats)
+        return stats
+      }
+
       const stats = await mockDb.getStats(hotel)
       console.log("[v0] dataSource.getStats returning:", stats)
       return stats
@@ -124,7 +187,25 @@ export const dataSource = {
 
   // Pump change methods
   getPumpChangeRecords: async (hotel?: string) => {
+    console.log("[v0] dataSource.getPumpChangeRecords called with hotel:", hotel)
     try {
+      const supabase = getSupabaseClient()
+      if (supabase) {
+        let query = supabase.from("pump_change_records").select("*").order("date", { ascending: false })
+
+        if (hotel) {
+          query = query.eq("hotel", hotel)
+        }
+
+        const { data, error } = await query
+
+        if (error) {
+          console.error("[v0] Supabase error in getPumpChangeRecords:", error)
+          return await mockDb.getPumpChangeRecords(hotel)
+        }
+
+        return data || []
+      }
       return await mockDb.getPumpChangeRecords(hotel)
     } catch (error) {
       console.error("[v0] Error in getPumpChangeRecords:", error)
@@ -147,7 +228,25 @@ export const dataSource = {
   },
 
   getLastPumpChangeDate: async (hotel: string) => {
+    console.log("[v0] dataSource.getLastPumpChangeDate called with hotel:", hotel)
     try {
+      const supabase = getSupabaseClient()
+      if (supabase) {
+        const { data, error } = await supabase
+          .from("pump_change_records")
+          .select("date, pump_number, operator_name")
+          .eq("hotel", hotel)
+          .order("date", { ascending: false })
+          .limit(1)
+          .single()
+
+        if (error) {
+          console.error("[v0] Supabase error in getLastPumpChangeDate:", error)
+          return await mockDb.getLastPumpChangeDate(hotel)
+        }
+
+        return data
+      }
       return await mockDb.getLastPumpChangeDate(hotel)
     } catch (error) {
       console.error("[v0] Error in getLastPumpChangeDate:", error)
@@ -157,7 +256,25 @@ export const dataSource = {
 
   // Fumigation methods
   getFumigationRecords: async (hotel?: string) => {
+    console.log("[v0] dataSource.getFumigationRecords called with hotel:", hotel)
     try {
+      const supabase = getSupabaseClient()
+      if (supabase) {
+        let query = supabase.from("fumigation_records").select("*").order("date", { ascending: false })
+
+        if (hotel) {
+          query = query.eq("hotel", hotel)
+        }
+
+        const { data, error } = await query
+
+        if (error) {
+          console.error("[v0] Supabase error in getFumigationRecords:", error)
+          return await mockDb.getFumigationRecords(hotel)
+        }
+
+        return data || []
+      }
       return await mockDb.getFumigationRecords(hotel)
     } catch (error) {
       console.error("[v0] Error in getFumigationRecords:", error)
@@ -170,8 +287,37 @@ export const dataSource = {
     fumigatedRooms: string[]
     operatorName: string
     observations: string | null
+    date?: string
   }) => {
+    console.log("[v0] dataSource.createFumigationRecord called with data:", data)
     try {
+      const supabase = getSupabaseClient()
+      if (supabase) {
+        const fumigationDate = data.date || new Date().toISOString().split("T")[0]
+        const nextDate = new Date(fumigationDate)
+        nextDate.setDate(nextDate.getDate() + 90) // 3 months = 90 days
+
+        const { data: result, error } = await supabase
+          .from("fumigation_records")
+          .insert([
+            {
+              hotel: data.hotel,
+              date: fumigationDate,
+              next_date: nextDate.toISOString().split("T")[0],
+              operator_name: data.operatorName,
+              observations: data.observations,
+            },
+          ])
+          .select()
+          .single()
+
+        if (error) {
+          console.error("[v0] Supabase error in createFumigationRecord:", error)
+          return await mockDb.createFumigationRecord(data)
+        }
+
+        return result
+      }
       return await mockDb.createFumigationRecord(data)
     } catch (error) {
       console.error("[v0] Error in createFumigationRecord:", error)
@@ -185,6 +331,33 @@ export const dataSource = {
     } catch (error) {
       console.error("[v0] Error in getFumigationStatus:", error)
       return []
+    }
+  },
+
+  getLastFumigationDate: async (hotel: string) => {
+    console.log("[v0] dataSource.getLastFumigationDate called with hotel:", hotel)
+    try {
+      const supabase = getSupabaseClient()
+      if (supabase) {
+        const { data, error } = await supabase
+          .from("fumigation_records")
+          .select("date, next_date")
+          .eq("hotel", hotel)
+          .order("date", { ascending: false })
+          .limit(1)
+          .single()
+
+        if (error) {
+          console.error("[v0] Supabase error in getLastFumigationDate:", error)
+          return await mockDb.getLastFumigationDate(hotel)
+        }
+
+        return data
+      }
+      return await mockDb.getLastFumigationDate(hotel)
+    } catch (error) {
+      console.error("[v0] Error in getLastFumigationDate:", error)
+      return null
     }
   },
 

@@ -642,36 +642,34 @@ export const mockDb = {
     return { id: newRecord.id }
   },
 
-  // Get last fumigation date for a hotel and room
-  getLastFumigationDate: async (hotel: string, room?: string): Promise<string | null> => {
+  // Get last fumigation date for a hotel
+  getLastFumigationDate: async (hotel: string): Promise<{ date: string; next_date: string } | null> => {
     const hotelRecords = fumigationRecords.filter((record) => record.hotel === hotel)
     if (hotelRecords.length === 0) return null
-
-    if (room) {
-      const roomRecords = hotelRecords.filter((record) => record.fumigatedRooms.includes(room))
-      if (roomRecords.length === 0) return null
-      const lastRecord = roomRecords.sort(
-        (a, b) => new Date(b.fumigatedAt).getTime() - new Date(a.fumigatedAt).getTime(),
-      )[0]
-      return lastRecord.fumigatedAt
-    }
 
     const lastRecord = hotelRecords.sort(
       (a, b) => new Date(b.fumigatedAt).getTime() - new Date(a.fumigatedAt).getTime(),
     )[0]
-    return lastRecord.fumigatedAt
+
+    const fumigationDate = new Date(lastRecord.fumigatedAt)
+    const nextDate = new Date(fumigationDate.getTime() + 90 * 24 * 60 * 60 * 1000) // 90 days
+
+    return {
+      date: fumigationDate.toISOString().split("T")[0],
+      next_date: nextDate.toISOString().split("T")[0],
+    }
   },
 
   // Get fumigation status for all rooms
   getFumigationStatus: async (hotel: string, rooms: string[]) => {
     const roomStatus = await Promise.all(
       rooms.map(async (room) => {
-        const lastDate = await mockDb.getLastFumigationDate(hotel, room)
+        const lastDate = await mockDb.getLastFumigationDate(hotel)
         if (!lastDate) {
           return { room, status: "overdue", lastFumigation: null, nextDue: null }
         }
 
-        const lastFumigation = new Date(lastDate)
+        const lastFumigation = new Date(lastDate.date)
         const nextDue = new Date(lastFumigation.getTime() + 90 * 24 * 60 * 60 * 1000) // 90 days
         const now = new Date()
         const daysUntilDue = Math.floor((nextDue.getTime() - now.getTime()) / (24 * 60 * 60 * 1000))
@@ -688,8 +686,8 @@ export const mockDb = {
         return {
           room,
           status,
-          lastFumigation: lastDate,
-          nextDue: nextDue.toISOString(),
+          lastFumigation: lastDate.date,
+          nextDue: lastDate.next_date,
           daysUntilDue,
         }
       }),
