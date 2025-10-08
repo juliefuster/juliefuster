@@ -1,5 +1,5 @@
-import { type NextRequest, NextResponse } from "next/server"
-import { SUPABASE } from "../../../../../lib/supabase/client"
+import { NextRequest, NextResponse } from "next/server"
+import { supabase } from "../../../../../lib/supabase/client"
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,15 +10,28 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Hotel parameter is required" }, { status: 400 })
     }
 
+    // Tareas mensuales fijas
     const tasks = [
-      { id: 5, name: "Limpieza marquesina" },
-      { id: 6, name: "Limpieza sala de máquinas" },
-      { id: 7, name: "Revisión luces de emergencia" },
-      { id: 8, name: "Limpieza bajante S1" },
-      { id: 9, name: "Limpieza pozo S2" },
+      { id: 5, name: "🧽 Limpieza marquesina" },
+      { id: 6, name: "🏭 Limpieza sala de máquinas" },
+      { id: 7, name: "💡 Revisión luces de emergencia" },
+      { id: 8, name: "⬇️ Limpieza bajante S1" },
+      { id: 9, name: "💧 Limpieza pozo S2" },
     ]
 
-    const status = await SUPABASEe.getMonthlyTasksStatus(hotel, tasks)
+    // Buscamos en la tabla monthly_tasks las tareas registradas de ese hotel
+    const { data, error } = await supabase
+      .from("monthly_tasks")
+      .select("*")
+      .eq("hotel", hotel)
+
+    if (error) throw error
+
+    // Actualizamos el estado de las tareas según lo encontrado
+    const status = tasks.map((task) => {
+      const done = data.some((row) => row.name === task.name && row.status === "Completado")
+      return { ...task, status: done ? "Completado" : "Pendiente" }
+    })
 
     return NextResponse.json(status)
   } catch (error) {
