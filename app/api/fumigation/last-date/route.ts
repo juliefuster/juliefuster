@@ -1,20 +1,40 @@
-import { type NextRequest, NextResponse } from "next/server"
-import { dataSource } from "../../../../lib/data-source"
+import { NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/client";
 
-export async function GET(request: NextRequest) {
+export async function POST(request: Request) {
   try {
-    const { searchParams } = new URL(request.url)
-    const hotel = searchParams.get("hotel")
+    const body = await request.json();
+    const { hotel, operatorName, observations } = body;
 
-    if (!hotel) {
-      return NextResponse.json({ error: "Hotel parameter is required" }, { status: 400 })
+    // Si vienen habitaciones, las ignoramos (solo registramos por fecha/hotel)
+    if (!hotel || !operatorName) {
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    const lastDate = await dataSource.getLastFumigationDate(hotel)
+    const supabase = createClient();
 
-    return NextResponse.json({ lastDate })
-  } catch (error) {
-    console.error("Error fetching last fumigation date:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    const today = new Date().toISOString().split("T")[0];
+    const nextDate = new Date();
+    nextDate.setMonth(nextDate.getMonth() + 3);
+
+    const { error } = await supabase.from("fumigation_records").insert([
+      {
+        hotel,
+        date: today,
+        next_date: nextDate.toISOString().split("T")[0],
+        operator_name: operatorName,
+        observations: observations || null,
+      },
+    ]);
+
+    if (error) throw error;
+
+    return NextResponse.json({ success: true, message: "Fumigación registrada exitosamente" });
+  } catch (err: any) {
+    console.error("Error inserting fumigation record:", err.message);
+    return NextResponse.json(
+      { error: "Failed to insert fumigation record", details: err.message },
+      { status: 500 }
+    );
   }
 }
