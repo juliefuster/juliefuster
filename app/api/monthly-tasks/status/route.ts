@@ -1,18 +1,19 @@
 import { NextRequest, NextResponse } from "next/server"
 import { supabase } from "@/lib/supabase/client"
 
-
-
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams
     const hotel = searchParams.get("hotel")
 
     if (!hotel) {
-      return NextResponse.json({ error: "Hotel parameter is required" }, { status: 400 })
+      return NextResponse.json(
+        { error: "Falta el parámetro hotel" },
+        { status: 400 }
+      )
     }
 
-    // Tareas mensuales fijas
+    // 🧾 Lista fija de tareas mensuales
     const tasks = [
       { id: 5, name: "🧽 Limpieza marquesina" },
       { id: 6, name: "🏭 Limpieza sala de máquinas" },
@@ -21,23 +22,32 @@ export async function GET(request: NextRequest) {
       { id: 9, name: "💧 Limpieza pozo S2" },
     ]
 
-    // Buscamos en la tabla monthly_tasks las tareas registradas de ese hotel
+    // 🔹 Consultamos las tareas registradas de ese hotel
     const { data, error } = await supabase
-      .from("monthly_tasks")
-      .select("*")
+      .from("monthly_tasks") // asegúrate de tener esta tabla creada
+      .select("name, status")
       .eq("hotel", hotel)
 
-    if (error) throw error
+    if (error) {
+      console.error("❌ Error al consultar Supabase:", error)
+      throw error
+    }
 
-    // Actualizamos el estado de las tareas según lo encontrado
+    // 🔹 Determinamos el estado actual de cada tarea
     const status = tasks.map((task) => {
-      const done = data.some((row) => row.name === task.name && row.status === "Completado")
-      return { ...task, status: done ? "Completado" : "Pendiente" }
+      const match = data?.find((row) => row.name === task.name)
+      return {
+        ...task,
+        status: match?.status === "Completado" ? "Completado" : "Pendiente",
+      }
     })
 
     return NextResponse.json(status)
   } catch (error) {
     console.error("[v0] Error fetching monthly tasks status:", error)
-    return NextResponse.json({ error: "Failed to fetch monthly tasks status" }, { status: 500 })
+    return NextResponse.json(
+      { error: "Error al obtener el estado de las tareas mensuales" },
+      { status: 500 }
+    )
   }
 }
