@@ -1,54 +1,50 @@
-import { type NextRequest, NextResponse } from "next/server"
-import { supabase } from "@/lib/supabase/client"
+import { NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/client";
 
-// 📍 GET → obtener registros de fumigación
-export async function GET(request: NextRequest) {
+export async function GET(request: Request) {
   try {
-    const searchParams = request.nextUrl.searchParams
-    const hotel = searchParams.get("hotel")
+    const { searchParams } = new URL(request.url);
+    const hotel = searchParams.get("hotel");
+    const roomsParam = searchParams.get("rooms");
 
-    let query = supabase.from("fumigation_records").select("*").order("date", { ascending: false })
-
-    if (hotel) {
-      query = query.eq("hotel", hotel)
+    if (!hotel || !roomsParam) {
+      return NextResponse.json([], { status: 200 }); // 🔹 Devuelve array vacío si falta info
     }
 
-    const { data, error } = await query
+    const rooms = roomsParam.split(",");
 
-    if (error) throw error
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from("fumigation_records")
+      .select("room, date, status")
+      .eq("hotel", hotel);
 
-    return NextResponse.json(data)
-  } catch (error) {
-    console.error("[v0] Error fetching fumigation records:", error)
-    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
-  }
-}
-
-// 📍 POST → crear nuevo registro de fumigación
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json()
-    const { hotel, fumigatedRooms, operatorName, observations } = body
-
-    if (!hotel || !fumigatedRooms || !operatorName) {
-      return NextResponse.json({ error: "Faltan campos obligatorios" }, { status: 400 })
+    if (error) {
+      console.error("❌ Supabase error:", error.message);
+      return NextResponse.json([], { status: 200 }); // 🔹 Devuelve array vacío si hay error
     }
 
-    const { data, error } = await supabase.from("fumigation_records").insert([
-      {
-        hotel,
-        fumigated_rooms: fumigatedRooms, // 👈 usa el nombre de columna real en Supabase
-        operator_name: operatorName,
-        observations: observations || null,
-        date: new Date().toISOString(),
-      },
-    ]).select()
+    // 🔹 Si no hay registros, devolvemos todas como vencidas
+    if (!data || data.length === 0) {
+      return NextResponse.json(rooms.map((room) => ({ room, status: "overdue" })));
+    }
 
-    if (error) throw error
+    // 🔹 Calcula el estado según la fecha
+    const today = new Date();
+    const result = rooms.map((room) => {
+      const record = data.find((r) => r.room === room);
+      if (!record) return { room, status: "overdue" };
 
-    return NextResponse.json(data[0])
-  } catch (error) {
-    console.error("[v0] Error creating fumigation record:", error)
-    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
+      const diffDays = (today.getTime() - new Date(record.date).getTime()) / (1000 * 60 * 60 * 24);
+      if (diffDays < 75) return { room, status: "upToDate" };
+      if (diffDays < 90) return { room, status: "upcoming" };
+      return { room, status: "overdue" };
+    });
+
+    return NextResponse.json(result);
+  } catch (err: any) {
+    console.error("💥 Error fetching fumigation status:", err.message);
+    // 🔹 Siempre devolvemos un array, para que el frontend no falle
+    return NextResponse.json([], { status: 200 });
   }
 }
