@@ -21,8 +21,7 @@ type FilterCleaningRecord = {
 export default function FilterCleaningHistory() {
   const params = useParams()
   const hotel = params.hotel as string
-  const hotelName = hotel === "caledonian" ? "Hotel Caledonian" : "Hotel Chi"
-
+  const hotelName = hotel === "caledonian" ? "Hotel Caledonian" : "Hotel Chi" 
   const [records, setRecords] = useState<FilterCleaningRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")

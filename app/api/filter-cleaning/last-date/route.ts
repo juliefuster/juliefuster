@@ -1,40 +1,30 @@
-import { type NextRequest, NextResponse } from "next/server"
+import { NextResponse } from "next/server"
 import { supabase } from "@/lib/supabase/client"
 
-export async function GET(request: NextRequest) {
+export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const hotel = searchParams.get("hotel")
 
     if (!hotel) {
-      return NextResponse.json(
-        { error: "Falta el parámetro hotel" },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: "Hotel parameter required" }, { status: 400 })
     }
 
-    // 🔹 Consultamos la última fecha de limpieza de filtros para ese hotel
     const { data, error } = await supabase
-      .from("filter_cleanings") // 👈 cambia este nombre si tu tabla se llama distinto
-      .select("date")
+      .from("filter_cleaning_records")
+      .select("created_at")
       .eq("hotel", hotel)
-      .order("date", { ascending: false })
+      .order("created_at", { ascending: false })
       .limit(1)
-      .single()
 
-    if (error) {
-      console.error("❌ Error al obtener la fecha desde Supabase:", error)
-      throw error
-    }
+    if (error) throw error
 
-    // Si no hay registros, devolvemos null
-    const lastDate = data?.date ?? null
-
+    const lastDate = data?.[0]?.created_at ?? null
     return NextResponse.json({ lastDate })
-  } catch (error) {
-    console.error("Error fetching last filter cleaning date:", error)
+  } catch (err: any) {
+    console.error("Error fetching last filter cleaning date:", err.message)
     return NextResponse.json(
-      { error: "Error al obtener la última fecha de limpieza" },
+      { error: "Failed to fetch last filter cleaning date", details: err.message },
       { status: 500 }
     )
   }
