@@ -307,4 +307,29 @@ export default function PendingIssues() {
       </Dialog>
     </div>
   )
+  const handleConfirmResolution = async () => {
+  if (!selectedIssue) return;
+
+  const response = await fetch(`/api/maintenance/${selectedIssue.id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      status: "Resuelta",
+      resolutionData: {
+        resolvedAt: resolutionDate,
+        responsible,
+        notes: resolutionNotes,
+      },
+    }),
+  });
+
+  if (response.ok) {
+    alert("Avería marcada como resuelta ✅");
+    setShowDialog(false);
+    fetchIssues(); // recarga la lista
+  } else {
+    alert("Error al actualizar la avería ❌");
+  }
+};
+
 }

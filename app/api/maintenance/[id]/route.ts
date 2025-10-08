@@ -1,35 +1,27 @@
-import { NextResponse } from "next/server"
-import { supabaseServer } from "@/lib/supabase/server"
+import { NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/client";
 
-export async function GET(request: Request) {
-  console.log("[API] /maintenance/stats called")
+export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+  const { id } = params;
+  const { status, resolutionData } = await request.json();
 
-  try {
-    const { searchParams } = new URL(request.url)
-    const hotel = searchParams.get("hotel")
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("maintenance_tasks")
+    .update({
+      status,
+      resolved_at: resolutionData?.resolvedAt,
+      resolved_by: resolutionData?.responsible,
+      resolution_notes: resolutionData?.notes,
+    })
+    .eq("id", id);
 
-    if (!hotel) {
-      return NextResponse.json({ error: "Missing hotel parameter" }, { status: 400 })
-    }
-
-    // Consultar datos
-    const { data, error } = await supabaseServer
-      .from("maintenance_tasks")
-      .select("status")
-      .eq("hotel", hotel)
-
-    if (error) {
-      console.error("Supabase error:", error)
-      return NextResponse.json({ error: "Database query failed" }, { status: 500 })
-    }
-
-    const total = data.length
-    const pending = data.filter((t) => t.status?.toLowerCase() === "pendiente").length
-    const resolved = data.filter((t) => t.status?.toLowerCase() === "resuelto").length
-
-    return NextResponse.json({ total, pending, resolved })
-  } catch (err) {
-    console.error("[API] Unexpected error:", err)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+  if (error) {
+    console.error("Supabase update error:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  return NextResponse.json({ success: true });
+}
+
 }
