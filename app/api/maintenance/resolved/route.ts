@@ -1,35 +1,45 @@
-import { NextResponse } from "next/server"
-import { supabase } from "@/lib/supabase/client"
+import { NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/client";
 
 export async function GET(request: Request) {
   try {
-    const { searchParams } = new URL(request.url)
-    const hotel = searchParams.get("hotel")
+    const { searchParams } = new URL(request.url);
+    const hotel = searchParams.get("hotel");
 
-    // 🔹 Consulta las averías resueltas en Supabase
-    let query = supabase
-      .from("maintenance_tasks") // 👈 cambia si tu tabla se llama distinto
+    if (!hotel) {
+      return NextResponse.json({ error: "Missing hotel parameter" }, { status: 400 });
+    }
+
+    const supabase = createClient();
+
+    const { data, error } = await supabase
+      .from("maintenance_tasks")
       .select("*")
-      .eq("status", "Resuelto") // solo las resueltas
-      .order("resolved_at", { ascending: false })
+      .eq("hotel", hotel)
+      .eq("status", "Resuelta") // 👈 muy importante: misma capitalización
+      .order("resolved_at", { ascending: false });
 
-    if (hotel) {
-      query = query.eq("hotel", hotel)
-    }
+    if (error) throw error;
 
-    const { data, error } = await query
+    const formatted = data.map((task) => ({
+      id: task.id,
+      title: task.title,
+      description: task.description,
+      category: task.category,
+      location: task.location,
+      priority: task.priority,
+      status: task.status,
+      reportedBy: task.reported_by,
+      createdAt: task.created_at,
+      resolvedAt: task.resolved_at,
+    }));
 
-    if (error) {
-      console.error("❌ Error al obtener datos de Supabase:", error)
-      throw error
-    }
-
-    return NextResponse.json(data)
-  } catch (error) {
-    console.error("Error fetching resolved issues:", error)
+    return NextResponse.json(formatted);
+  } catch (err: any) {
+    console.error("Error fetching resolved issues:", err.message);
     return NextResponse.json(
-      { error: "Error al cargar las averías resueltas" },
+      { error: "Failed to fetch resolved issues", details: err.message },
       { status: 500 }
-    )
+    );
   }
 }
