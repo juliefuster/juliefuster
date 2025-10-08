@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { dataSource } from "../../../../../lib/data-source"
+import { SUPABASE } from "../../../../../lib/supabase/client"
 
 export async function GET(request: NextRequest) {
   try {
@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
       { id: 9, name: "Limpieza pozo S2" },
     ]
 
-    const status = await dataSource.getMonthlyTasksStatus(hotel, tasks)
+    const status = await SUPABASEe.getMonthlyTasksStatus(hotel, tasks)
 
     return NextResponse.json(status)
   } catch (error) {
