@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { ArrowLeft, Search, MapPin, User, Clock, CheckCircle2, Printer } from "lucide-react"
+import { ArrowLeft, Search, CheckCircle2, Printer } from "lucide-react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
 import { useEffect, useState } from "react"
@@ -18,6 +18,7 @@ interface Issue {
   priority: string
   status: string
   reportedBy: string
+  resolvedBy: string
   createdAt: string
   resolvedAt: string | null
 }
@@ -122,84 +123,48 @@ export default function ResolvedIssues() {
             </p>
           </Card>
         ) : (
-          <>
-            <div className="grid gap-6 print:hidden">
-              {filteredIssues.map((issue) => (
-                <Card
-                  key={issue.id}
-                  className="p-6 bg-white print:break-inside-avoid print:border print:border-slate-300 print:shadow-none"
-                >
-                  <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-start gap-3 mb-3">
-                        <Badge className="bg-green-100 text-green-800 border-green-200">RESUELTA</Badge>
-                        <Badge variant="outline">{issue.category}</Badge>
-                      </div>
-                      <h3 className="text-xl font-bold text-slate-900 mb-2">{issue.title}</h3>
-                      <p className="text-slate-600 mb-4">{issue.description}</p>
-                      <div className="flex flex-wrap gap-4 text-sm text-slate-600">
-                        <div className="flex items-center gap-2">
-                          <MapPin className="h-4 w-4" />
-                          {issue.location}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <User className="h-4 w-4" />
-                          {issue.reportedBy}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Clock className="h-4 w-4" />
-                          Tiempo: {calculateResolutionTime(issue.createdAt, issue.resolvedAt)}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="text-sm text-slate-600">
-                      <p>Resuelta el</p>
-                      <p className="font-semibold text-slate-900">
-                        {issue.resolvedAt ? new Date(issue.resolvedAt).toLocaleDateString() : "N/A"}
-                      </p>
-                    </div>
-                  </div>
-                </Card>
-              ))}
-            </div>
-
-            <div className="hidden print:block">
-              <table className="w-full border-collapse text-xs">
-                <thead>
-                  <tr className="border-b-2 border-slate-300">
-                    <th className="text-left p-2 font-semibold">Estado</th>
-                    <th className="text-left p-2 font-semibold">Título</th>
-                    <th className="text-left p-2 font-semibold">Ubicación</th>
-                    <th className="text-left p-2 font-semibold">Categoría</th>
-                    <th className="text-left p-2 font-semibold">Reportado por</th>
-                    <th className="text-left p-2 font-semibold">Fecha Creación</th>
-                    <th className="text-left p-2 font-semibold">Fecha Resolución</th>
-                    <th className="text-left p-2 font-semibold">Tiempo</th>
+          <div className="bg-white rounded-lg shadow overflow-hidden print:shadow-none">
+            <table className="w-full">
+              <thead className="bg-slate-50 border-b border-slate-200">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Estado</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Título</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Ubicación</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Categoría</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Reportado por</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Resuelto por</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Fecha Creación</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">
+                    Fecha Resolución
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Tiempo</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                {filteredIssues.map((issue) => (
+                  <tr key={issue.id} className="hover:bg-slate-50">
+                    <td className="px-4 py-3">
+                      <Badge className="bg-green-100 text-green-800">RESUELTA</Badge>
+                    </td>
+                    <td className="px-4 py-3 font-medium text-slate-900">{issue.title}</td>
+                    <td className="px-4 py-3 text-slate-600">{issue.location}</td>
+                    <td className="px-4 py-3 text-slate-600">{issue.category}</td>
+                    <td className="px-4 py-3 text-slate-600">{issue.reportedBy}</td>
+                    <td className="px-4 py-3 text-slate-600">{issue.resolvedBy || "N/A"}</td>
+                    <td className="px-4 py-3 text-slate-600">
+                      {new Date(issue.createdAt).toLocaleDateString("es-ES")}
+                    </td>
+                    <td className="px-4 py-3 text-slate-600">
+                      {issue.resolvedAt ? new Date(issue.resolvedAt).toLocaleDateString("es-ES") : "N/A"}
+                    </td>
+                    <td className="px-4 py-3 text-slate-600">
+                      {calculateResolutionTime(issue.createdAt, issue.resolvedAt)}
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {filteredIssues.map((issue) => (
-                    <tr key={issue.id} className="border-b border-slate-200">
-                      <td className="p-2">
-                        <span className="inline-block px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800">
-                          RESUELTA
-                        </span>
-                      </td>
-                      <td className="p-2 font-medium">{issue.title}</td>
-                      <td className="p-2">{issue.location}</td>
-                      <td className="p-2">{issue.category}</td>
-                      <td className="p-2">{issue.reportedBy}</td>
-                      <td className="p-2">{new Date(issue.createdAt).toLocaleDateString()}</td>
-                      <td className="p-2">
-                        {issue.resolvedAt ? new Date(issue.resolvedAt).toLocaleDateString() : "N/A"}
-                      </td>
-                      <td className="p-2">{calculateResolutionTime(issue.createdAt, issue.resolvedAt)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </main>
     </div>
