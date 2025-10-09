@@ -5,6 +5,7 @@ import { Plus, Clock, CheckCircle2, Wrench, Calendar, Building2 } from "lucide-r
 import Link from "next/link"
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
+import { createClient } from "@/lib/supabase/client"
 
 interface Stats {
   total: number
@@ -18,33 +19,43 @@ export default function HotelDashboard() {
   const hotelName = hotel === "caledonian" ? "Hotel Caledonian" : "Hotel Chi"
   const hotelColor = hotel === "caledonian" ? "blue" : "purple"
 
+  const supabase = createClient()
+
   const [stats, setStats] = useState<Stats>({
     total: 0,
     pending: 0,
     resolved: 0,
   })
 
- useEffect(() => {
-  async function loadStats() {
+  useEffect(() => {
+    fetchStats()
+  }, [hotel])
+
+  const fetchStats = async () => {
     try {
-      const res = await fetch(`/api/maintenance/stats?hotel=${hotel}`)
+      // 🔹 Consulta todas las averías del hotel seleccionado
+      const { data, error } = await supabase
+        .from("maintenance_tasks")
+        .select("status")
+        .eq("hotel", hotel)
 
-      // Si el servidor devuelve error (no JSON)
-      if (!res.ok) {
-        const text = await res.text()
-        throw new Error(`Error del servidor: ${text}`)
-      }
+      if (error) throw error
 
-      const data = await res.json()
-      setStats(data)
-    } catch (err: any) {
-      console.error("Error loading stats:", err)
+      // 🔹 Calcula los totales
+      const total = data.length
+      const pending = data.filter((task) =>
+        task.status?.toLowerCase().includes("pendiente")
+      ).length
+      const resolved = data.filter((task) =>
+        task.status?.toLowerCase().includes("resuelta")
+      ).length
+
+      setStats({ total, pending, resolved })
+    } catch (error) {
+      console.error("Error al cargar estadísticas:", error)
+      setStats({ total: 0, pending: 0, resolved: 0 })
     }
   }
-
-  loadStats()
-}, [hotel])
-
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
@@ -68,8 +79,9 @@ export default function HotelDashboard() {
         </div>
       </header>
 
+      {/* Contenido principal */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Stats Cards */}
+        {/* Tarjetas de estadísticas */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           <Card className="p-6 bg-white border-slate-200">
             <div className="flex items-center justify-between">
@@ -108,7 +120,7 @@ export default function HotelDashboard() {
           </Card>
         </div>
 
-        {/* Action Cards */}
+        {/* Tarjetas de acciones */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <Link href={`/${hotel}/nueva-averia`} className="group">
             <Card className="p-8 bg-white hover:shadow-lg transition-all duration-200 border-2 border-slate-200 hover:border-blue-500 cursor-pointer">
