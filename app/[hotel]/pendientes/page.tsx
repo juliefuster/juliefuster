@@ -196,15 +196,15 @@ export default function PendingIssues() {
             <table className="w-full">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Estado</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Prioridad</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Título</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Descripción</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Ubicación</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Categoría</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Reportado por</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Fecha</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase print:hidden min-w-[140px]">
+                  <th className="px-2 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Estado</th>
+                  <th className="px-2 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Prioridad</th>
+                  <th className="px-2 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Título</th>
+                  <th className="px-2 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Descripción</th>
+                  <th className="px-2 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Ubicación</th>
+                  <th className="px-2 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Categoría</th>
+                  <th className="px-2 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Reportado por</th>
+                  <th className="px-2 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Fecha</th>
+                  <th className="px-2 py-3 text-left text-xs font-semibold text-slate-700 uppercase print:hidden min-w-[140px]">
                     Acciones
                   </th>
                 </tr>
@@ -212,30 +212,30 @@ export default function PendingIssues() {
               <tbody className="divide-y divide-slate-200">
                 {issues.map((issue) => (
                   <tr key={issue.id} className="hover:bg-slate-50">
-                    <td className="px-4 py-3">
+                    <td className="px-2 py-3 text-sm">
                       <Badge className="bg-red-100 text-red-800">PENDIENTE</Badge>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-2 py-3 text-sm">
                       <Badge className={getPriorityColor(issue.priority)}>
                         {issue.priority?.toUpperCase() || "BAJA"}
                       </Badge>
                     </td>
-                    <td className="px-4 py-3 font-medium text-slate-900">{issue.title || "Sin título"}</td>
-                    <td className="px-4 py-3 text-slate-600 text-xs whitespace-normal">
+                    <td className="px-2 py-3 text-sm font-medium text-slate-900">{issue.title || "Sin título"}</td>
+                    <td className="px-2 py-3 text-slate-600 text-xs whitespace-normal">
                       {issue.description || "Sin descripción"}
                     </td>
-                    <td className="px-4 py-3 text-slate-600">{issue.location || "N/A"}</td>
-                    <td className="px-4 py-3 text-slate-600">{issue.category || "N/A"}</td>
-                    <td className="px-4 py-3 text-slate-600">{issue.reported_by || "Desconocido"}</td>
-                    <td className="px-4 py-3 text-slate-600">
+                    <td className="px-2 py-3 text-sm text-slate-600">{issue.location || "N/A"}</td>
+                    <td className="px-2 py-3 text-sm text-slate-600">{issue.category || "N/A"}</td>
+                    <td className="px-2 py-3 text-sm text-slate-600">{issue.reported_by || "Desconocido"}</td>
+                    <td className="px-2 py-3 text-sm text-slate-600">
                       {new Date(issue.created_at).toLocaleDateString("es-ES")}
                     </td>
-                    <td className="px-4 py-3 print:hidden min-w-[140px]">
+                    <td className="px-2 py-3 print:hidden min-w-[140px]">
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => handleResolve(issue)}
-                        className="text-green-600 hover:text-green-700 hover:bg-green-50 whitespace-nowrap"
+                        className="text-sm text-green-600 hover:text-green-700 hover:bg-green-50 whitespace-nowrap"
                       >
                         <CheckCircle className="h-4 w-4 mr-2" />
                         Completar
@@ -350,6 +350,33 @@ export default function PendingIssues() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <style jsx global>{`
+        @media print {
+          @page {
+            size: landscape;
+            margin: 1cm;
+          }
+          
+          body {
+            print-color-adjust: exact;
+            -webkit-print-color-adjust: exact;
+          }
+          
+          table {
+            font-size: 10px;
+            width: 100%;
+          }
+          
+          th, td {
+            padding: 4px 4px !important;
+          }
+          
+          .print\\:hidden {
+            display: none !important;
+          }
+        }
+      `}</style>
     </div>
   )
 }
