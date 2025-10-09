@@ -17,7 +17,7 @@ interface PumpChangeRecord {
   pump_number: number
   operator_name: string
   observations: string | null
-  purga_realizada: boolean | null // 👈 añadido
+  purga_realizada: boolean | null // 👈 Nueva columna
 }
 
 export default function PumpChangeHistory() {
@@ -52,7 +52,7 @@ export default function PumpChangeHistory() {
 
   const handlePrint = () => window.print()
 
-  // Agrupar por mes
+  // Agrupar registros por mes
   const recordsByMonth = records.reduce(
     (acc, record) => {
       const date = record.date ? new Date(record.date) : null
@@ -89,6 +89,7 @@ export default function PumpChangeHistory() {
 
   return (
     <>
+      {/* 🔹 Estilos de impresión */}
       <style jsx global>{`
         @media print {
           body * {
@@ -233,36 +234,31 @@ export default function PumpChangeHistory() {
                                   <span className="text-slate-400 italic">Sin observaciones</span>
                                 )}
                               </TableCell>
-
-{/* 💧 Purga realizada */}
-<div className="grid gap-2 mt-3">
-  <label className="text-sm font-medium text-slate-700">💧 ¿Se ha realizado purga?</label>
-  <div className="flex gap-4 mt-1">
-    <label className="flex items-center gap-2 cursor-pointer">
-      <input
-        type="radio"
-        name="purga"
-        value="true"
-        checked={purga === true}
-        onChange={() => setPurga(true)}
-        className="accent-green-600 h-4 w-4"
-      />
-      <span>Sí</span>
-    </label>
-    <label className="flex items-center gap-2 cursor-pointer">
-      <input
-        type="radio"
-        name="purga"
-        value="false"
-        checked={purga === false}
-        onChange={() => setPurga(false)}
-        className="accent-red-600 h-4 w-4"
-      />
-      <span>No</span>
-    </label>
-  </div>
-</div>
-
+                              <TableCell>
+                                {record.purga_realizada === true ? (
+                                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
+                                    <Droplets className="h-3 w-3" /> Sí
+                                  </span>
+                                ) : record.purga_realizada === false ? (
+                                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700">
+                                    <Droplets className="h-3 w-3" /> No
+                                  </span>
+                                ) : (
+                                  <span className="italic text-slate-400">—</span>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          )
+                        })}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </div>
+        )}
+      </div>
     </>
   )
 }
