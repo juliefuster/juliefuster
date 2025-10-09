@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { ArrowLeft, Printer, AlertCircle, CheckCircle } from "lucide-react"
+import { ArrowLeft, Printer, AlertCircle, CheckCircle, Plus, Trash2 } from "lucide-react"
 
 interface Issue {
   id: string
@@ -23,6 +23,11 @@ interface Issue {
   status: string
   reported_by: string
   created_at: string
+}
+
+interface Material {
+  name: string
+  quantity: number
 }
 
 export default function PendingIssues() {
@@ -41,6 +46,8 @@ export default function PendingIssues() {
     responsible: "",
     notes: "",
   })
+
+  const [materials, setMaterials] = useState<Material[]>([{ name: "", quantity: 1 }])
 
   useEffect(() => {
     fetchIssues()
@@ -74,14 +81,24 @@ export default function PendingIssues() {
       responsible: "",
       notes: "",
     })
+    setMaterials([{ name: "", quantity: 1 }])
   }
 
-  // ✅ Actualiza y mueve la avería a la página de resueltas
+  // 🧱 Funciones para manejar los materiales
+  const addMaterial = () => setMaterials([...materials, { name: "", quantity: 1 }])
+  const removeMaterial = (index: number) => setMaterials(materials.filter((_, i) => i !== index))
+  const updateMaterial = (index: number, field: keyof Material, value: string | number) => {
+    const updated = [...materials]
+    updated[index] = { ...updated[index], [field]: value }
+    setMaterials(updated)
+  }
+
+  // ✅ Guardar avería resuelta con materiales usados
   const handleSaveResolve = async () => {
     if (!resolvingIssue) return
 
     if (!resolveForm.resolvedAt || !resolveForm.responsible || !resolveForm.notes) {
-      alert("Por favor completa todos los campos antes de marcar como resuelta.")
+      alert("Por favor completa todos los campos obligatorios antes de marcar como resuelta.")
       return
     }
 
@@ -89,20 +106,18 @@ export default function PendingIssues() {
       const { error } = await supabase
         .from("maintenance_tasks")
         .update({
-          status: "resuelta", // 👈 minúsculas para coincidir con la página de resueltas
+          status: "resuelta",
           resolved_at: resolveForm.resolvedAt,
           resolution_responsible: resolveForm.responsible,
           resolution_notes: resolveForm.notes,
+          materials_used: JSON.stringify(materials.filter((m) => m.name.trim() !== "")), // 👈 Guardamos los materiales
         })
         .eq("id", resolvingIssue.id)
 
       if (error) throw error
 
-      // 🔹 Recargar la lista para eliminarla de pendientes
       await fetchIssues()
       setResolvingIssue(null)
-
-      // 🔹 Redirigir automáticamente a la página de resueltas
       router.push(`/${hotel}/resueltas`)
     } catch (error) {
       console.error("Error al marcar como resuelta:", error)
@@ -218,6 +233,7 @@ export default function PendingIssues() {
           <DialogHeader>
             <DialogTitle>Completar Avería</DialogTitle>
           </DialogHeader>
+
           <div className="grid gap-4 py-4">
             <div className="bg-slate-50 p-4 rounded-lg">
               <h3 className="font-semibold text-slate-900 mb-1">{resolvingIssue?.title}</h3>
@@ -254,7 +270,42 @@ export default function PendingIssues() {
                 rows={4}
               />
             </div>
+
+            {/* 🔩 Materiales usados */}
+            <div className="grid gap-2 mt-2">
+              <Label>🔩 Materiales / Repuestos utilizados</Label>
+              {materials.map((mat, index) => (
+                <div key={index} className="flex gap-2 items-center">
+                  <Input
+                    placeholder="Nombre del material"
+                    value={mat.name}
+                    onChange={(e) => updateMaterial(index, "name", e.target.value)}
+                    className="flex-1"
+                  />
+                  <Input
+                    type="number"
+                    min="1"
+                    value={mat.quantity}
+                    onChange={(e) => updateMaterial(index, "quantity", Number(e.target.value))}
+                    className="w-24 text-center"
+                  />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => removeMaterial(index)}
+                    className="text-red-500 hover:text-red-700"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+              <Button variant="outline" size="sm" onClick={addMaterial} className="mt-1 text-blue-600">
+                <Plus className="h-4 w-4 mr-2" />
+                Agregar material
+              </Button>
+            </div>
           </div>
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setResolvingIssue(null)}>
               Cancelar

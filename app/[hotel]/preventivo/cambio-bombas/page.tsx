@@ -2,188 +2,133 @@
 
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
-import Link from "next/link"
-import { ArrowLeft, Calendar, User, Wrench } from "lucide-react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Calendar, Wrench, User } from "lucide-react"
 
-interface PumpChangeRecord {
-  id: string
-  hotel: string
-  date: string
-  pump_number: number
-  operator_name: string
-  observations: string | null
-}
-
-export default function PumpChangeHistory() {
+export default function CambioBombas() {
   const params = useParams()
   const hotel = params.hotel as string
   const supabase = createClient()
 
-  const [records, setRecords] = useState<PumpChangeRecord[]>([])
-  const [loading, setLoading] = useState(true)
+  const [selectedPump, setSelectedPump] = useState<number | null>(null)
+  const [operatorName, setOperatorName] = useState("")
+  const [observations, setObservations] = useState("")
+  const [open, setOpen] = useState(false)
+  const [loading, setLoading] = useState(false)
 
-  useEffect(() => {
-    fetchRecords()
-  }, [hotel])
+  const handleSave = async () => {
+    if (!selectedPump || !operatorName) {
+      alert("Selecciona la bomba y el operario antes de guardar.")
+      return
+    }
 
-  const fetchRecords = async () => {
     try {
       setLoading(true)
-      const { data, error } = await supabase
-        .from("pump_change_records")
-        .select("*")
-        .eq("hotel", hotel)
-        .order("date", { ascending: false })
+      const { error } = await supabase.from("pump_change_records").insert([
+        {
+          hotel,
+          pump_number: selectedPump,
+          operator_name: operatorName,
+          observations: observations || null,
+          date: new Date().toISOString().split("T")[0],
+        },
+      ])
 
       if (error) throw error
-      setRecords(data || [])
+      alert("✅ Cambio de bomba registrado correctamente.")
+      setOpen(false)
+      setSelectedPump(null)
+      setOperatorName("")
+      setObservations("")
     } catch (err) {
-      console.error("Error cargando historial de bombas:", err)
+      console.error(err)
+      alert("❌ Error al registrar el cambio.")
     } finally {
       setLoading(false)
     }
   }
 
-  // Agrupa por mes
-  const recordsByMonth = records.reduce(
-    (acc, record) => {
-      const date = record.date ? new Date(record.date) : null
-      if (!date || isNaN(date.getTime())) return acc
-
-      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
-      const monthName = date.toLocaleDateString("es-ES", { year: "numeric", month: "long" })
-
-      if (!acc[monthKey]) acc[monthKey] = { monthName, records: [] }
-      acc[monthKey].records.push(record)
-
-      return acc
-    },
-    {} as Record<string, { monthName: string; records: PumpChangeRecord[] }>
-  )
-
-  const sortedMonths = Object.keys(recordsByMonth).sort((a, b) => b.localeCompare(a))
-
-  if (loading) {
-    return (
-      <div className="container mx-auto p-6">
-        <div className="flex items-center gap-4 mb-6">
-          <Link href={`/${hotel}/preventivo`}>
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-          </Link>
-          <h1 className="text-3xl font-bold">Historial de Cambio de Bombas</h1>
-        </div>
-        <p className="text-slate-500">Cargando historial...</p>
-      </div>
-    )
-  }
-
   return (
     <div className="container mx-auto p-6">
-      {/* Encabezado */}
-      <div className="flex items-center gap-4 mb-6">
-        <Link href={`/${hotel}/preventivo`}>
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-        </Link>
-        <div>
-          <h1 className="text-3xl font-bold">Historial de Cambio de Bombas</h1>
-          <p className="text-muted-foreground">
-            Registro completo de cambios de bombas semanales
-          </p>
-        </div>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Wrench className="h-5 w-5 text-orange-500" />
+            Cambio de Bombas
+          </CardTitle>
+          <CardDescription>Registra el cambio de bomba semanal</CardDescription>
+        </CardHeader>
 
-      {/* Tabla de registros */}
-      {sortedMonths.length === 0 ? (
-        <Card>
-          <CardContent className="p-6">
-            <p className="text-center text-slate-500">
-              No hay registros de cambios de bombas.
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-6">
-          {sortedMonths.map((monthKey) => {
-            const { monthName, records: monthRecords } = recordsByMonth[monthKey]
-            return (
-              <Card key={monthKey}>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Calendar className="h-5 w-5" />
-                    {monthName.charAt(0).toUpperCase() + monthName.slice(1)}
-                  </CardTitle>
-                  <CardDescription>
-                    {monthRecords.length} cambio(s) registrado(s)
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Fecha</TableHead>
-                        <TableHead>Nº Bomba</TableHead>
-                        <TableHead>Responsable</TableHead>
-                        <TableHead>Observaciones</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {monthRecords.map((record) => {
-                        const date = record.date ? new Date(record.date) : null
-                        return (
-                          <TableRow key={record.id}>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                <Calendar className="h-4 w-4 text-slate-400" />
-                                {date && !isNaN(date.getTime())
-                                  ? date.toLocaleDateString("es-ES", {
-                                      day: "2-digit",
-                                      month: "2-digit",
-                                      year: "numeric",
-                                    })
-                                  : "Sin fecha"}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant="outline" className="flex items-center gap-1 w-fit">
-                                <Wrench className="h-3 w-3" />
-                                Bomba {record.pump_number}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                <User className="h-4 w-4 text-slate-400" />
-                                {record.operator_name || "Desconocido"}
-                              </div>
-                            </TableCell>
-                            <TableCell className="max-w-md">
-                              {record.observations ? (
-                                record.observations
-                              ) : (
-                                <span className="text-slate-400 italic">
-                                  Sin observaciones
-                                </span>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        )
-                      })}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            )
-          })}
-        </div>
-      )}
+        <CardContent>
+          <div className="flex flex-col gap-4">
+            <div className="flex gap-4">
+              <Button
+                variant={selectedPump === 1 ? "default" : "outline"}
+                onClick={() => setSelectedPump(1)}
+                className="flex-1"
+              >
+                Bomba 1
+              </Button>
+              <Button
+                variant={selectedPump === 2 ? "default" : "outline"}
+                onClick={() => setSelectedPump(2)}
+                className="flex-1"
+              >
+                Bomba 2
+              </Button>
+            </div>
+
+            {/* 🔽 Selector de operario */}
+            <div>
+              <Label htmlFor="operator" className="flex items-center gap-2">
+                <User className="h-4 w-4 text-slate-500" />
+                Nombre del Operario *
+              </Label>
+              <select
+                id="operator"
+                value={operatorName}
+                onChange={(e) => setOperatorName(e.target.value)}
+                className="w-full mt-1 border rounded-md px-3 py-2 text-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              >
+                <option value="">Selecciona un operario</option>
+                <option value="Xavi">Xavi</option>
+                <option value="John">John</option>
+              </select>
+            </div>
+
+            {/* Observaciones */}
+            <div>
+              <Label htmlFor="observations">Observaciones</Label>
+              <Textarea
+                id="observations"
+                placeholder="Escribe observaciones opcionales..."
+                value={observations}
+                onChange={(e) => setObservations(e.target.value)}
+              />
+            </div>
+
+            <Button
+              onClick={handleSave}
+              disabled={loading}
+              className="bg-blue-600 hover:bg-blue-700 text-white w-full"
+            >
+              {loading ? "Guardando..." : "Guardar"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }
