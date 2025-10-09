@@ -7,7 +7,13 @@ import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -46,8 +52,13 @@ export default function PendingIssues() {
     responsible: "",
     notes: "",
   })
-
   const [materials, setMaterials] = useState<Material[]>([{ name: "", quantity: 1 }])
+
+  const currentDate = new Date().toLocaleDateString("es-ES", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  })
 
   useEffect(() => {
     fetchIssues()
@@ -84,9 +95,9 @@ export default function PendingIssues() {
     setMaterials([{ name: "", quantity: 1 }])
   }
 
-  // 🧱 Funciones para manejar los materiales
   const addMaterial = () => setMaterials([...materials, { name: "", quantity: 1 }])
-  const removeMaterial = (index: number) => setMaterials(materials.filter((_, i) => i !== index))
+  const removeMaterial = (index: number) =>
+    setMaterials(materials.filter((_, i) => i !== index))
   const updateMaterial = (index: number, field: keyof Material, value: string | number) => {
     const updated = [...materials]
     updated[index] = { ...updated[index], [field]: value }
@@ -110,7 +121,7 @@ export default function PendingIssues() {
           resolved_at: resolveForm.resolvedAt,
           resolution_responsible: resolveForm.responsible,
           resolution_notes: resolveForm.notes,
-          materials_used: JSON.stringify(materials.filter((m) => m.name.trim() !== "")), // 👈 Guardamos los materiales
+          materials_used: JSON.stringify(materials.filter((m) => m.name.trim() !== "")),
         })
         .eq("id", resolvingIssue.id)
 
@@ -142,8 +153,8 @@ export default function PendingIssues() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-      {/* Header */}
-      <header className="bg-white border-b border-slate-200 shadow-sm print:border-b-2">
+      {/* Header (pantalla) */}
+      <header className="bg-white border-b border-slate-200 shadow-sm print:hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex justify-between items-center">
           <div className="flex items-center gap-4">
             <Link href={`/${hotel}`} className="print:hidden">
@@ -163,6 +174,14 @@ export default function PendingIssues() {
         </div>
       </header>
 
+      {/* Encabezado solo para impresión */}
+      <div className="hidden print:block text-center mb-6">
+        <h1 className="text-2xl font-bold text-slate-900 mb-1">Averías Pendientes</h1>
+        <p className="text-sm text-slate-700">
+          {hotelName} — {currentDate}
+        </p>
+      </div>
+
       {/* Contenido */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {loading ? (
@@ -170,7 +189,9 @@ export default function PendingIssues() {
         ) : issues.length === 0 ? (
           <Card className="p-12 text-center bg-white">
             <AlertCircle className="h-12 w-12 text-slate-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-slate-900 mb-2">No hay averías pendientes</h3>
+            <h3 className="text-lg font-semibold text-slate-900 mb-2">
+              No hay averías pendientes
+            </h3>
             <p className="text-slate-600">Todas las averías han sido resueltas 🎉</p>
           </Card>
         ) : (
@@ -178,13 +199,27 @@ export default function PendingIssues() {
             <table className="w-full">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Estado</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Prioridad</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Título</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Ubicación</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Categoría</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Reportado por</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Fecha</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">
+                    Estado
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">
+                    Prioridad
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">
+                    Título
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">
+                    Ubicación
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">
+                    Categoría
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">
+                    Reportado por
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">
+                    Fecha
+                  </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase print:hidden">
                     Acciones
                   </th>
@@ -201,7 +236,9 @@ export default function PendingIssues() {
                         {issue.priority?.toUpperCase() || "BAJA"}
                       </Badge>
                     </td>
-                    <td className="px-4 py-3 font-medium text-slate-900">{issue.title || "Sin título"}</td>
+                    <td className="px-4 py-3 font-medium text-slate-900">
+                      {issue.title || "Sin título"}
+                    </td>
                     <td className="px-4 py-3 text-slate-600">{issue.location || "N/A"}</td>
                     <td className="px-4 py-3 text-slate-600">{issue.category || "N/A"}</td>
                     <td className="px-4 py-3 text-slate-600">{issue.reported_by || "Desconocido"}</td>
@@ -226,97 +263,6 @@ export default function PendingIssues() {
           </div>
         )}
       </main>
-
-      {/* 🧾 Modal para completar avería */}
-      <Dialog open={!!resolvingIssue} onOpenChange={() => setResolvingIssue(null)}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Completar Avería</DialogTitle>
-          </DialogHeader>
-
-          <div className="grid gap-4 py-4">
-            <div className="bg-slate-50 p-4 rounded-lg">
-              <h3 className="font-semibold text-slate-900 mb-1">{resolvingIssue?.title}</h3>
-              <p className="text-sm text-slate-600">{resolvingIssue?.description}</p>
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="resolvedAt">📅 Fecha de finalización *</Label>
-              <Input
-                id="resolvedAt"
-                type="date"
-                value={resolveForm.resolvedAt}
-                onChange={(e) => setResolveForm({ ...resolveForm, resolvedAt: e.target.value })}
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="responsible">👷 Responsable *</Label>
-              <Input
-                id="responsible"
-                placeholder="Nombre del técnico o responsable"
-                value={resolveForm.responsible}
-                onChange={(e) => setResolveForm({ ...resolveForm, responsible: e.target.value })}
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="notes">🛠️ Qué se hizo para reparar *</Label>
-              <Textarea
-                id="notes"
-                placeholder="Describe brevemente qué se hizo para solucionar la avería..."
-                value={resolveForm.notes}
-                onChange={(e) => setResolveForm({ ...resolveForm, notes: e.target.value })}
-                rows={4}
-              />
-            </div>
-
-            {/* 🔩 Materiales usados */}
-            <div className="grid gap-2 mt-2">
-              <Label>🔩 Materiales / Repuestos utilizados</Label>
-              {materials.map((mat, index) => (
-                <div key={index} className="flex gap-2 items-center">
-                  <Input
-                    placeholder="Nombre del material"
-                    value={mat.name}
-                    onChange={(e) => updateMaterial(index, "name", e.target.value)}
-                    className="flex-1"
-                  />
-                  <Input
-                    type="number"
-                    min="1"
-                    value={mat.quantity}
-                    onChange={(e) => updateMaterial(index, "quantity", Number(e.target.value))}
-                    className="w-24 text-center"
-                  />
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => removeMaterial(index)}
-                    className="text-red-500 hover:text-red-700"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
-              <Button variant="outline" size="sm" onClick={addMaterial} className="mt-1 text-blue-600">
-                <Plus className="h-4 w-4 mr-2" />
-                Agregar material
-              </Button>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setResolvingIssue(null)}>
-              Cancelar
-            </Button>
-            <Button onClick={handleSaveResolve} className="bg-green-600 hover:bg-green-700">
-              <CheckCircle className="h-4 w-4 mr-2" />
-              Guardar y Marcar como Resuelta
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }
