@@ -19,6 +19,7 @@ interface ResolvedIssue {
   priority: string
   reported_by: string
   resolution_responsible: string
+  resolution_notes: string | null
   created_at: string
   resolved_at: string
   materials_used: string | null
@@ -27,8 +28,7 @@ interface ResolvedIssue {
 export default function ResolvedIssuesPage() {
   const params = useParams()
   const hotel = params.hotel as string
-  const hotelName =
-    hotel === "caledonian" ? "Hotel Caledonian" : hotel === "chi" ? "Hotel Chi" : "Hotel Desconocido"
+  const hotelName = hotel === "caledonian" ? "Hotel Caledonian" : hotel === "chi" ? "Hotel Chi" : "Hotel Desconocido"
 
   const supabase = createClient()
   const [issues, setIssues] = useState<ResolvedIssue[]>([])
@@ -62,7 +62,7 @@ export default function ResolvedIssuesPage() {
     (i) =>
       i.title?.toLowerCase().includes(search.toLowerCase()) ||
       i.location?.toLowerCase().includes(search.toLowerCase()) ||
-      i.category?.toLowerCase().includes(search.toLowerCase())
+      i.description?.toLowerCase().includes(search.toLowerCase()),
   )
 
   const handlePrint = () => window.print()
@@ -115,7 +115,7 @@ export default function ResolvedIssuesPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-6 print:hidden">
           <Input
-            placeholder="🔍 Buscar por título, ubicación o categoría..."
+            placeholder="🔍 Buscar por título, ubicación o descripción..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="max-w-3xl mx-auto"
@@ -135,12 +135,17 @@ export default function ResolvedIssuesPage() {
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Estado</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Título</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Descripción</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Ubicación</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Categoría</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Reportado por</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Resuelto por</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">
+                    Reparación Realizada
+                  </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Fecha creación</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Fecha resolución</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">
+                    Fecha resolución
+                  </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Tiempo</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">
                     Materiales / Repuestos
@@ -154,17 +159,20 @@ export default function ResolvedIssuesPage() {
                       <Badge className="bg-green-100 text-green-700">RESUELTA</Badge>
                     </td>
                     <td className="px-4 py-3 font-medium text-slate-900">{issue.title}</td>
+                    <td className="px-4 py-3 text-xs text-slate-700 whitespace-normal">
+                      {issue.description || <span className="italic text-slate-400">Sin descripción</span>}
+                    </td>
                     <td className="px-4 py-3 text-slate-600">{issue.location}</td>
-                    <td className="px-4 py-3 text-slate-600">{issue.category}</td>
                     <td className="px-4 py-3 text-slate-600">{issue.reported_by}</td>
                     <td className="px-4 py-3 text-slate-600">{issue.resolution_responsible || "—"}</td>
+                    <td className="px-4 py-3 text-xs text-slate-700 whitespace-normal">
+                      {issue.resolution_notes || <span className="italic text-slate-400">Sin notas</span>}
+                    </td>
                     <td className="px-4 py-3 text-slate-600">
                       {new Date(issue.created_at).toLocaleDateString("es-ES")}
                     </td>
                     <td className="px-4 py-3 text-slate-600">
-                      {issue.resolved_at
-                        ? new Date(issue.resolved_at).toLocaleDateString("es-ES")
-                        : "—"}
+                      {issue.resolved_at ? new Date(issue.resolved_at).toLocaleDateString("es-ES") : "—"}
                     </td>
                     <td className="px-4 py-3 text-slate-600">
                       {issue.created_at && issue.resolved_at
@@ -178,8 +186,7 @@ export default function ResolvedIssuesPage() {
                         <ul className="list-disc list-inside text-sm text-slate-700">
                           {JSON.parse(issue.materials_used).map((m: any, i: number) => (
                             <li key={i}>
-                              {m.name} —{" "}
-                              <span className="text-slate-500">{m.quantity} ud.</span>
+                              {m.name} — <span className="text-slate-500">{m.quantity} ud.</span>
                             </li>
                           ))}
                         </ul>

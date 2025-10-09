@@ -10,9 +10,10 @@ import { Badge } from "@/components/ui/badge"
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -40,8 +41,7 @@ export default function PendingIssues() {
   const params = useParams()
   const router = useRouter()
   const hotel = params.hotel as string
-  const hotelName =
-    hotel === "caledonian" ? "Hotel Caledonian" : hotel === "chi" ? "Hotel Chi" : "Hotel Desconocido"
+  const hotelName = hotel === "caledonian" ? "Hotel Caledonian" : hotel === "chi" ? "Hotel Chi" : "Hotel Desconocido"
 
   const supabase = createClient()
   const [issues, setIssues] = useState<Issue[]>([])
@@ -96,8 +96,7 @@ export default function PendingIssues() {
   }
 
   const addMaterial = () => setMaterials([...materials, { name: "", quantity: 1 }])
-  const removeMaterial = (index: number) =>
-    setMaterials(materials.filter((_, i) => i !== index))
+  const removeMaterial = (index: number) => setMaterials(materials.filter((_, i) => i !== index))
   const updateMaterial = (index: number, field: keyof Material, value: string | number) => {
     const updated = [...materials]
     updated[index] = { ...updated[index], [field]: value }
@@ -189,38 +188,23 @@ export default function PendingIssues() {
         ) : issues.length === 0 ? (
           <Card className="p-12 text-center bg-white">
             <AlertCircle className="h-12 w-12 text-slate-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-slate-900 mb-2">
-              No hay averías pendientes
-            </h3>
+            <h3 className="text-lg font-semibold text-slate-900 mb-2">No hay averías pendientes</h3>
             <p className="text-slate-600">Todas las averías han sido resueltas 🎉</p>
           </Card>
         ) : (
-          <div className="bg-white rounded-lg shadow overflow-hidden print:shadow-none">
+          <div className="bg-white rounded-lg shadow overflow-x-auto print:shadow-none">
             <table className="w-full">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">
-                    Estado
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">
-                    Prioridad
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">
-                    Título
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">
-                    Ubicación
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">
-                    Categoría
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">
-                    Reportado por
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">
-                    Fecha
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase print:hidden">
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Estado</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Prioridad</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Título</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Descripción</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Ubicación</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Categoría</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Reportado por</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Fecha</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase print:hidden min-w-[140px]">
                     Acciones
                   </th>
                 </tr>
@@ -236,8 +220,9 @@ export default function PendingIssues() {
                         {issue.priority?.toUpperCase() || "BAJA"}
                       </Badge>
                     </td>
-                    <td className="px-4 py-3 font-medium text-slate-900">
-                      {issue.title || "Sin título"}
+                    <td className="px-4 py-3 font-medium text-slate-900">{issue.title || "Sin título"}</td>
+                    <td className="px-4 py-3 text-slate-600 text-xs whitespace-normal">
+                      {issue.description || "Sin descripción"}
                     </td>
                     <td className="px-4 py-3 text-slate-600">{issue.location || "N/A"}</td>
                     <td className="px-4 py-3 text-slate-600">{issue.category || "N/A"}</td>
@@ -245,12 +230,12 @@ export default function PendingIssues() {
                     <td className="px-4 py-3 text-slate-600">
                       {new Date(issue.created_at).toLocaleDateString("es-ES")}
                     </td>
-                    <td className="px-4 py-3 print:hidden">
+                    <td className="px-4 py-3 print:hidden min-w-[140px]">
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => handleResolve(issue)}
-                        className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                        className="text-green-600 hover:text-green-700 hover:bg-green-50 whitespace-nowrap"
                       >
                         <CheckCircle className="h-4 w-4 mr-2" />
                         Completar
@@ -263,6 +248,108 @@ export default function PendingIssues() {
           </div>
         )}
       </main>
+
+      <Dialog open={!!resolvingIssue} onOpenChange={() => setResolvingIssue(null)}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Marcar Avería como Resuelta</DialogTitle>
+            <DialogDescription>
+              Completa la información sobre la resolución de la avería: {resolvingIssue?.title}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {/* Fecha de finalización */}
+            <div className="space-y-2">
+              <Label htmlFor="resolvedAt">
+                Fecha de Finalización <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="resolvedAt"
+                type="date"
+                value={resolveForm.resolvedAt}
+                onChange={(e) => setResolveForm({ ...resolveForm, resolvedAt: e.target.value })}
+                required
+              />
+            </div>
+
+            {/* Responsable */}
+            <div className="space-y-2">
+              <Label htmlFor="responsible">
+                Responsable <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="responsible"
+                placeholder="Nombre del técnico o responsable"
+                value={resolveForm.responsible}
+                onChange={(e) => setResolveForm({ ...resolveForm, responsible: e.target.value })}
+                required
+              />
+            </div>
+
+            {/* Notas de resolución */}
+            <div className="space-y-2">
+              <Label htmlFor="notes">
+                ¿Qué se hizo para reparar? <span className="text-red-500">*</span>
+              </Label>
+              <Textarea
+                id="notes"
+                placeholder="Describe las acciones realizadas para resolver la avería..."
+                value={resolveForm.notes}
+                onChange={(e) => setResolveForm({ ...resolveForm, notes: e.target.value })}
+                rows={4}
+                required
+              />
+            </div>
+
+            {/* Materiales utilizados */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Materiales Utilizados (opcional)</Label>
+                <Button type="button" variant="outline" size="sm" onClick={addMaterial}>
+                  <Plus className="h-4 w-4 mr-1" />
+                  Añadir Material
+                </Button>
+              </div>
+              {materials.map((material, index) => (
+                <div key={index} className="flex gap-2 items-end">
+                  <div className="flex-1">
+                    <Input
+                      placeholder="Nombre del material"
+                      value={material.name}
+                      onChange={(e) => updateMaterial(index, "name", e.target.value)}
+                    />
+                  </div>
+                  <div className="w-24">
+                    <Input
+                      type="number"
+                      min="1"
+                      placeholder="Cant."
+                      value={material.quantity}
+                      onChange={(e) => updateMaterial(index, "quantity", Number.parseInt(e.target.value) || 1)}
+                    />
+                  </div>
+                  {materials.length > 1 && (
+                    <Button type="button" variant="ghost" size="icon" onClick={() => removeMaterial(index)}>
+                      <Trash2 className="h-4 w-4 text-red-500" />
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setResolvingIssue(null)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSaveResolve} className="bg-green-600 hover:bg-green-700">
+              <CheckCircle className="h-4 w-4 mr-2" />
+              Marcar como Resuelta
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
