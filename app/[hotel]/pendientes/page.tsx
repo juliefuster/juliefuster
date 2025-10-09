@@ -1,8 +1,9 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useParams } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
+import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -10,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { ArrowLeft, Printer, Pencil, AlertCircle, CheckCircle } from "lucide-react"
+import { ArrowLeft, Printer, AlertCircle, CheckCircle } from "lucide-react"
 
 interface Issue {
   id: string
@@ -26,21 +27,14 @@ interface Issue {
 
 export default function PendingIssues() {
   const params = useParams()
+  const router = useRouter()
   const hotel = params.hotel as string
-  const hotelName = hotel === "caledonian" ? "Hotel Caledonian" : hotel === "chi" ? "Hotel Chi" : "Hotel Desconocido"
+  const hotelName =
+    hotel === "caledonian" ? "Hotel Caledonian" : hotel === "chi" ? "Hotel Chi" : "Hotel Desconocido"
 
+  const supabase = createClient()
   const [issues, setIssues] = useState<Issue[]>([])
   const [loading, setLoading] = useState(true)
-  const [editingIssue, setEditingIssue] = useState<Issue | null>(null)
-  const [editForm, setEditForm] = useState({
-    title: "",
-    description: "",
-    location: "",
-    category: "",
-    priority: "",
-    reported_by: "",
-  })
-
   const [resolvingIssue, setResolvingIssue] = useState<Issue | null>(null)
   const [resolveForm, setResolveForm] = useState({
     resolvedAt: new Date().toISOString().split("T")[0],
@@ -52,49 +46,24 @@ export default function PendingIssues() {
     fetchIssues()
   }, [hotel])
 
+  // 🔹 Cargar averías pendientes desde Supabase
   const fetchIssues = async () => {
     try {
-      const response = await fetch(`/api/maintenance/pending?hotel=${hotel}`)
-      if (!response.ok) throw new Error(`Error ${response.status}`)
-      const data = await response.json()
-      setIssues(Array.isArray(data) ? data : [])
+      setLoading(true)
+      const { data, error } = await supabase
+        .from("maintenance_tasks")
+        .select("*")
+        .eq("hotel", hotel)
+        .ilike("status", "%pendiente%")
+        .order("created_at", { ascending: false })
+
+      if (error) throw error
+      setIssues(data || [])
     } catch (error) {
       console.error("Error cargando averías pendientes:", error)
       setIssues([])
     } finally {
       setLoading(false)
-    }
-  }
-
-  const handleEdit = (issue: Issue) => {
-    setEditingIssue(issue)
-    setEditForm({
-      title: issue.title || "",
-      description: issue.description || "",
-      location: issue.location || "",
-      category: issue.category || "",
-      priority: issue.priority || "",
-      reported_by: issue.reported_by || "",
-    })
-  }
-
-  const handleSaveEdit = async () => {
-    if (!editingIssue) return
-
-    try {
-      const response = await fetch(`/api/maintenance/${editingIssue.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(editForm),
-      })
-
-      if (!response.ok) throw new Error("Error al actualizar")
-
-      await fetchIssues()
-      setEditingIssue(null)
-    } catch (error) {
-      console.error("Error al guardar:", error)
-      alert("Error al guardar los cambios")
     }
   }
 
@@ -107,31 +76,37 @@ export default function PendingIssues() {
     })
   }
 
+  // ✅ Actualiza y mueve la avería a la página de resueltas
   const handleSaveResolve = async () => {
     if (!resolvingIssue) return
 
-    if (!resolveForm.responsible || !resolveForm.notes) {
-      alert("Por favor, completa todos los campos obligatorios")
+    if (!resolveForm.resolvedAt || !resolveForm.responsible || !resolveForm.notes) {
+      alert("Por favor completa todos los campos antes de marcar como resuelta.")
       return
     }
 
     try {
-      const response = await fetch(`/api/maintenance/${resolvingIssue.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          status: "resuelto",
-          resolutionData: resolveForm,
-        }),
-      })
+      const { error } = await supabase
+        .from("maintenance_tasks")
+        .update({
+          status: "resuelta", // 👈 minúsculas para coincidir con la página de resueltas
+          resolved_at: resolveForm.resolvedAt,
+          resolution_responsible: resolveForm.responsible,
+          resolution_notes: resolveForm.notes,
+        })
+        .eq("id", resolvingIssue.id)
 
-      if (!response.ok) throw new Error("Error al marcar como resuelta")
+      if (error) throw error
 
+      // 🔹 Recargar la lista para eliminarla de pendientes
       await fetchIssues()
       setResolvingIssue(null)
+
+      // 🔹 Redirigir automáticamente a la página de resueltas
+      router.push(`/${hotel}/resueltas`)
     } catch (error) {
-      console.error("Error al resolver:", error)
-      alert("Error al marcar como resuelta")
+      console.error("Error al marcar como resuelta:", error)
+      alert("Error al guardar la resolución de la avería.")
     }
   }
 
@@ -173,7 +148,7 @@ export default function PendingIssues() {
         </div>
       </header>
 
-      {/* Content */}
+      {/* Contenido */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {loading ? (
           <div className="text-center py-12 text-slate-600">Cargando averías...</div>
@@ -184,158 +159,73 @@ export default function PendingIssues() {
             <p className="text-slate-600">Todas las averías han sido resueltas 🎉</p>
           </Card>
         ) : (
-          <>
-            {/* Table view for screen */}
-            <div className="bg-white rounded-lg shadow overflow-hidden print:shadow-none">
-              <table className="w-full">
-                <thead className="bg-slate-50 border-b border-slate-200">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Estado</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Prioridad</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Título</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Ubicación</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Categoría</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">
-                      Reportado por
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Fecha</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase print:hidden">
-                      Acciones
-                    </th>
+          <div className="bg-white rounded-lg shadow overflow-hidden print:shadow-none">
+            <table className="w-full">
+              <thead className="bg-slate-50 border-b border-slate-200">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Estado</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Prioridad</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Título</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Ubicación</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Categoría</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Reportado por</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Fecha</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase print:hidden">
+                    Acciones
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                {issues.map((issue) => (
+                  <tr key={issue.id} className="hover:bg-slate-50">
+                    <td className="px-4 py-3">
+                      <Badge className="bg-red-100 text-red-800">PENDIENTE</Badge>
+                    </td>
+                    <td className="px-4 py-3">
+                      <Badge className={getPriorityColor(issue.priority)}>
+                        {issue.priority?.toUpperCase() || "BAJA"}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-3 font-medium text-slate-900">{issue.title || "Sin título"}</td>
+                    <td className="px-4 py-3 text-slate-600">{issue.location || "N/A"}</td>
+                    <td className="px-4 py-3 text-slate-600">{issue.category || "N/A"}</td>
+                    <td className="px-4 py-3 text-slate-600">{issue.reported_by || "Desconocido"}</td>
+                    <td className="px-4 py-3 text-slate-600">
+                      {new Date(issue.created_at).toLocaleDateString("es-ES")}
+                    </td>
+                    <td className="px-4 py-3 print:hidden">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleResolve(issue)}
+                        className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                      >
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        Completar
+                      </Button>
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200">
-                  {issues.map((issue) => (
-                    <tr key={issue.id} className="hover:bg-slate-50">
-                      <td className="px-4 py-3">
-                        <Badge className="bg-red-100 text-red-800">PENDIENTE</Badge>
-                      </td>
-                      <td className="px-4 py-3">
-                        <Badge className={getPriorityColor(issue.priority)}>
-                          {issue.priority?.toUpperCase() || "BAJA"}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-3 font-medium text-slate-900">{issue.title || "Sin título"}</td>
-                      <td className="px-4 py-3 text-slate-600">{issue.location || "N/A"}</td>
-                      <td className="px-4 py-3 text-slate-600">{issue.category || "N/A"}</td>
-                      <td className="px-4 py-3 text-slate-600">{issue.reported_by || "Desconocido"}</td>
-                      <td className="px-4 py-3 text-slate-600">
-                        {new Date(issue.created_at).toLocaleDateString("es-ES")}
-                      </td>
-                      <td className="px-4 py-3 print:hidden">
-                        <div className="flex gap-2">
-                          <Button variant="ghost" size="sm" onClick={() => handleEdit(issue)}>
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleResolve(issue)}
-                            className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                          >
-                            <CheckCircle className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </main>
 
-      {/* Edit Dialog */}
-      <Dialog open={!!editingIssue} onOpenChange={() => setEditingIssue(null)}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Editar Avería</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="title">Título</Label>
-              <Input
-                id="title"
-                value={editForm.title}
-                onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="description">Descripción</Label>
-              <Textarea
-                id="description"
-                value={editForm.description}
-                onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
-                rows={3}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="location">Ubicación</Label>
-                <Input
-                  id="location"
-                  value={editForm.location}
-                  onChange={(e) => setEditForm({ ...editForm, location: e.target.value })}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="category">Categoría</Label>
-                <Input
-                  id="category"
-                  value={editForm.category}
-                  onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="priority">Prioridad</Label>
-                <select
-                  id="priority"
-                  value={editForm.priority}
-                  onChange={(e) => setEditForm({ ...editForm, priority: e.target.value })}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                >
-                  <option value="baja">Baja</option>
-                  <option value="media">Media</option>
-                  <option value="alta">Alta</option>
-                  <option value="urgente">Urgente</option>
-                </select>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="reported_by">Reportado por</Label>
-                <Input
-                  id="reported_by"
-                  value={editForm.reported_by}
-                  onChange={(e) => setEditForm({ ...editForm, reported_by: e.target.value })}
-                />
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditingIssue(null)}>
-              Cancelar
-            </Button>
-            <Button onClick={handleSaveEdit}>Guardar cambios</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
+      {/* 🧾 Modal para completar avería */}
       <Dialog open={!!resolvingIssue} onOpenChange={() => setResolvingIssue(null)}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Marcar como Resuelta</DialogTitle>
+            <DialogTitle>Completar Avería</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="bg-slate-50 p-4 rounded-lg">
               <h3 className="font-semibold text-slate-900 mb-1">{resolvingIssue?.title}</h3>
               <p className="text-sm text-slate-600">{resolvingIssue?.description}</p>
             </div>
+
             <div className="grid gap-2">
-              <Label htmlFor="resolvedAt">
-                Fecha de finalización <span className="text-red-500">*</span>
-              </Label>
+              <Label htmlFor="resolvedAt">📅 Fecha de finalización *</Label>
               <Input
                 id="resolvedAt"
                 type="date"
@@ -343,10 +233,9 @@ export default function PendingIssues() {
                 onChange={(e) => setResolveForm({ ...resolveForm, resolvedAt: e.target.value })}
               />
             </div>
+
             <div className="grid gap-2">
-              <Label htmlFor="responsible">
-                Responsable <span className="text-red-500">*</span>
-              </Label>
+              <Label htmlFor="responsible">👷 Responsable *</Label>
               <Input
                 id="responsible"
                 placeholder="Nombre del técnico o responsable"
@@ -354,13 +243,12 @@ export default function PendingIssues() {
                 onChange={(e) => setResolveForm({ ...resolveForm, responsible: e.target.value })}
               />
             </div>
+
             <div className="grid gap-2">
-              <Label htmlFor="notes">
-                ¿Qué se hizo para reparar? <span className="text-red-500">*</span>
-              </Label>
+              <Label htmlFor="notes">🛠️ Qué se hizo para reparar *</Label>
               <Textarea
                 id="notes"
-                placeholder="Describe las acciones realizadas para resolver la avería..."
+                placeholder="Describe brevemente qué se hizo para solucionar la avería..."
                 value={resolveForm.notes}
                 onChange={(e) => setResolveForm({ ...resolveForm, notes: e.target.value })}
                 rows={4}
@@ -373,7 +261,7 @@ export default function PendingIssues() {
             </Button>
             <Button onClick={handleSaveResolve} className="bg-green-600 hover:bg-green-700">
               <CheckCircle className="h-4 w-4 mr-2" />
-              Marcar como Resuelta
+              Guardar y Marcar como Resuelta
             </Button>
           </DialogFooter>
         </DialogContent>
