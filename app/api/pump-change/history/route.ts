@@ -1,89 +1,71 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { createClient } from "@/lib/supabase/client"
-import { Card } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { ArrowLeft, Calendar, Wrench } from "lucide-react"
-import Link from "next/link"
 import { useParams } from "next/navigation"
+import Link from "next/link"
+import { createClient } from "@/lib/supabase/client"
+import { Button } from "@/components/ui/button"
+import { Card } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { ArrowLeft, Printer, Wrench } from "lucide-react"
 
 interface PumpRecord {
   id: string
   hotel: string
-  date: string
-  pump_number: number
-  operator_name: string
-  observations: string | null
+  mes: string
+  fecha: string
+  numero_bomba: number
+  responsable: string
+  observaciones: string | null
 }
 
 export default function PumpChangeHistory() {
   const params = useParams()
   const hotel = params.hotel as string
-  const hotelName = hotel === "caledonian" ? "Hotel Caledonian" : "Hotel Chi"
+  const hotelName =
+    hotel === "caledonian"
+      ? "Hotel Caledonian"
+      : hotel === "chi"
+      ? "Hotel Chi"
+      : "Hotel Desconocido"
 
   const supabase = createClient()
   const [records, setRecords] = useState<PumpRecord[]>([])
   const [loading, setLoading] = useState(true)
 
+  const currentDate = new Date().toLocaleDateString("es-ES", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  })
+
   useEffect(() => {
-    fetchHistory()
+    fetchRecords()
   }, [hotel])
 
-  const fetchHistory = async () => {
+  const fetchRecords = async () => {
     try {
       setLoading(true)
       const { data, error } = await supabase
         .from("pump_change_records")
         .select("*")
         .eq("hotel", hotel)
-        .order("date", { ascending: false })
+        .order("fecha", { ascending: false })
 
       if (error) throw error
       setRecords(data || [])
     } catch (error) {
-      console.error("Error al cargar historial de bombas:", error)
+      console.error("Error cargando historial:", error)
     } finally {
       setLoading(false)
     }
   }
 
-  // 🔹 Función auxiliar para formatear fecha
-  const formatDate = (dateString: string) => {
-    if (!dateString) return "Sin fecha"
-    const date = new Date(dateString)
-    if (isNaN(date.getTime())) return "Fecha inválida"
-    return date.toLocaleDateString("es-ES", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    })
-  }
-
-  // 🔹 Calcular el nombre del mes
-  const getMonthName = (dateString: string) => {
-    const date = new Date(dateString)
-    if (isNaN(date.getTime())) return "Sin mes"
-    return date.toLocaleDateString("es-ES", { month: "long", year: "numeric" })
-  }
-
-  // 🔹 Agrupar por mes
-  const groupedRecords = records.reduce(
-    (acc, record) => {
-      const month = getMonthName(record.date)
-      if (!acc[month]) acc[month] = []
-      acc[month].push(record)
-      return acc
-    },
-    {} as Record<string, PumpRecord[]>
-  )
-
-  const months = Object.keys(groupedRecords)
+  const handlePrint = () => window.print()
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-      {/* Header */}
+    <div className="min-h-screen bg-slate-50">
+      {/* Header visible solo en pantalla */}
       <header className="bg-white border-b border-slate-200 shadow-sm print:hidden">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -101,67 +83,137 @@ export default function PumpChangeHistory() {
             </div>
           </div>
           <Button
-            onClick={() => window.print()}
+            onClick={handlePrint}
             variant="outline"
             className="bg-white hover:bg-slate-50 print:hidden"
           >
-            <Calendar className="h-4 w-4 mr-2" />
+            <Printer className="h-4 w-4 mr-2" />
             Imprimir
           </Button>
         </div>
       </header>
 
-      {/* Contenido */}
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      {/* Encabezado que solo aparece al imprimir */}
+      <div className="hidden print:block text-center mb-6">
+        <h1 className="text-2xl font-bold text-slate-900 mb-1">
+          Historial de Cambios de Bombas
+        </h1>
+        <p className="text-sm text-slate-700">
+          {hotelName} — {currentDate}
+        </p>
+      </div>
+
+      {/* Contenido principal */}
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         {loading ? (
           <Card className="p-8 text-center">
             <p className="text-slate-600">Cargando historial...</p>
           </Card>
         ) : records.length === 0 ? (
           <Card className="p-8 text-center">
-            <p className="text-slate-600">No hay registros de cambio de bombas aún.</p>
+            <p className="text-slate-600">
+              No hay registros de cambio de bombas aún.
+            </p>
           </Card>
         ) : (
-          months.map((month) => (
-            <Card
-              key={month}
-              className="mb-8 bg-white shadow-sm border border-slate-200 print:shadow-none print:border"
-            >
-              <div className="p-4 border-b bg-slate-50">
-                <h2 className="text-lg font-semibold text-slate-800 capitalize flex items-center gap-2">
-                  <Calendar className="h-5 w-5 text-slate-600" />
-                  {month}
-                </h2>
-                <p className="text-sm text-slate-500">
-                  {groupedRecords[month].length} cambio(s) registrado(s)
-                </p>
-              </div>
-              <div className="p-4">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-slate-100">
-                      <TableHead className="font-bold text-slate-700">Fecha</TableHead>
-                      <TableHead className="font-bold text-slate-700">Nº de Bomba</TableHead>
-                      <TableHead className="font-bold text-slate-700">Responsable</TableHead>
-                      <TableHead className="font-bold text-slate-700">Observaciones</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {groupedRecords[month].map((r) => (
-                      <TableRow key={r.id}>
-                        <TableCell>{formatDate(r.date)}</TableCell>
-                        <TableCell>Bomba {r.pump_number}</TableCell>
-                        <TableCell>{r.operator_name || "Sin responsable"}</TableCell>
-                        <TableCell>{r.observations || "Sin observaciones"}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </Card>
-          ))
+          <div className="overflow-x-auto bg-white rounded-lg shadow print:shadow-none">
+            <table className="w-full border-collapse">
+              <thead className="bg-slate-100 border-b border-slate-200">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">
+                    #
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">
+                    Fecha
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">
+                    Mes
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">
+                    Nº de Bomba
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">
+                    Responsable
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">
+                    Observaciones
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                {records.map((r, i) => (
+                  <tr key={r.id} className="hover:bg-slate-50">
+                    <td className="px-4 py-3 text-slate-600">{i + 1}</td>
+                    <td className="px-4 py-3 text-slate-600">
+                      {new Date(r.fecha).toLocaleDateString("es-ES")}
+                    </td>
+                    <td className="px-4 py-3 capitalize text-slate-600">
+                      {r.mes || "-"}
+                    </td>
+                    <td className="px-4 py-3 text-slate-600">{r.numero_bomba}</td>
+                    <td className="px-4 py-3 text-slate-600">{r.responsable}</td>
+                    <td className="px-4 py-3 text-slate-600">
+                      {r.observaciones || (
+                        <span className="italic text-slate-400">Sin observaciones</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </main>
+
+      {/* 🖨️ Estilos de impresión */}
+      <style jsx global>{`
+        @media print {
+          @page {
+            size: A4 landscape;
+            margin: 10mm;
+          }
+
+          body {
+            font-size: 11px !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+
+          table {
+            width: 100% !important;
+            border-collapse: collapse !important;
+          }
+
+          th,
+          td {
+            padding: 6px 8px !important;
+            font-size: 10.5px !important;
+            border: 1px solid #d1d5db !important;
+            vertical-align: top !important;
+          }
+
+          th {
+            background: #f1f5f9 !important;
+            color: #111827 !important;
+          }
+
+          tr,
+          td,
+          th {
+            page-break-inside: avoid !important;
+          }
+
+          button,
+          .print\\:hidden {
+            display: none !important;
+          }
+
+          main {
+            padding: 0 !important;
+            margin: 0 !important;
+          }
+        }
+      `}</style>
     </div>
   )
 }
