@@ -1,183 +1,181 @@
 "use client"
 
-import { Card } from "@/components/ui/card"
-import { Plus, Clock, CheckCircle2, Wrench, Calendar, Building2 } from "lucide-react"
-import Link from "next/link"
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
+import { Card } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { ArrowLeft, Printer, Wrench } from "lucide-react"
+import Link from "next/link"
 
-interface Stats {
-  total: number
-  pending: number
-  resolved: number
+interface ResolvedIssue {
+  id: string
+  title: string
+  description: string
+  category: string
+  location: string
+  priority: string
+  reported_by: string
+  resolution_responsible: string
+  created_at: string
+  resolved_at: string
+  materials_used: string | null
 }
 
-export default function HotelDashboard() {
+export default function ResolvedIssuesPage() {
   const params = useParams()
   const hotel = params.hotel as string
-  const hotelName = hotel === "caledonian" ? "Hotel Caledonian" : "Hotel Chi"
-  const hotelColor = hotel === "caledonian" ? "blue" : "purple"
+  const hotelName =
+    hotel === "caledonian" ? "Hotel Caledonian" : hotel === "chi" ? "Hotel Chi" : "Hotel Desconocido"
 
   const supabase = createClient()
-
-  const [stats, setStats] = useState<Stats>({
-    total: 0,
-    pending: 0,
-    resolved: 0,
-  })
+  const [issues, setIssues] = useState<ResolvedIssue[]>([])
+  const [search, setSearch] = useState("")
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetchStats()
+    fetchResolvedIssues()
   }, [hotel])
 
-  const fetchStats = async () => {
+  const fetchResolvedIssues = async () => {
     try {
-      // 🔹 Consulta todas las averías del hotel seleccionado
+      setLoading(true)
       const { data, error } = await supabase
         .from("maintenance_tasks")
-        .select("status")
+        .select("*")
         .eq("hotel", hotel)
+        .ilike("status", "%resuelta%")
+        .order("resolved_at", { ascending: false })
 
       if (error) throw error
-
-      // 🔹 Calcula los totales
-      const total = data.length
-      const pending = data.filter((task) =>
-        task.status?.toLowerCase().includes("pendiente")
-      ).length
-      const resolved = data.filter((task) =>
-        task.status?.toLowerCase().includes("resuelta")
-      ).length
-
-      setStats({ total, pending, resolved })
+      setIssues(data || [])
     } catch (error) {
-      console.error("Error al cargar estadísticas:", error)
-      setStats({ total: 0, pending: 0, resolved: 0 })
+      console.error("Error cargando averías resueltas:", error)
+    } finally {
+      setLoading(false)
     }
   }
 
+  const filteredIssues = issues.filter(
+    (i) =>
+      i.title?.toLowerCase().includes(search.toLowerCase()) ||
+      i.location?.toLowerCase().includes(search.toLowerCase()) ||
+      i.category?.toLowerCase().includes(search.toLowerCase())
+  )
+
+  const handlePrint = () => window.print()
+
+  const getTimeDifference = (created: string, resolved: string) => {
+    const start = new Date(created).getTime()
+    const end = new Date(resolved).getTime()
+    const hours = Math.round((end - start) / (1000 * 60 * 60))
+    return hours > 0 ? `${hours}h` : `${hours}h`
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+    <div className="min-h-screen bg-slate-50">
       {/* Header */}
-      <header className="bg-white border-b border-slate-200 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className={`p-2 bg-${hotelColor}-600 rounded-lg`}>
-                <Building2 className="h-6 w-6 text-white" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-slate-900">{hotelName}</h1>
-                <p className="text-sm text-slate-600">Sistema de Mantenimiento</p>
-              </div>
-            </div>
-            <Link href="/" className="text-sm text-slate-600 hover:text-slate-900">
-              Cambiar hotel
+      <header className="bg-white border-b border-slate-200 shadow-sm print:hidden">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Link href={`/${hotel}`}>
+              <Button variant="ghost" size="icon">
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
             </Link>
+            <div>
+              <h1 className="text-2xl font-bold text-slate-900">Averías Resueltas</h1>
+              <p className="text-sm text-slate-600">{hotelName}</p>
+            </div>
           </div>
+          <Button onClick={handlePrint} variant="outline" className="bg-transparent">
+            <Printer className="h-4 w-4 mr-2" />
+            Imprimir
+          </Button>
         </div>
       </header>
 
-      {/* Contenido principal */}
+      {/* Search Bar */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Tarjetas de estadísticas */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          <Card className="p-6 bg-white border-slate-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-slate-600">Total</p>
-                <p className="text-3xl font-bold text-slate-900 mt-1">{stats.total}</p>
-              </div>
-              <div className="p-3 bg-slate-100 rounded-lg">
-                <Wrench className="h-6 w-6 text-slate-600" />
-              </div>
-            </div>
-          </Card>
-
-          <Card className="p-6 bg-white border-red-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-red-700">Pendientes</p>
-                <p className="text-3xl font-bold text-red-600 mt-1">{stats.pending}</p>
-              </div>
-              <div className="p-3 bg-red-100 rounded-lg">
-                <Clock className="h-6 w-6 text-red-600" />
-              </div>
-            </div>
-          </Card>
-
-          <Card className="p-6 bg-white border-green-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-green-700">Resueltas</p>
-                <p className="text-3xl font-bold text-green-600 mt-1">{stats.resolved}</p>
-              </div>
-              <div className="p-3 bg-green-100 rounded-lg">
-                <CheckCircle2 className="h-6 w-6 text-green-600" />
-              </div>
-            </div>
-          </Card>
+        <div className="mb-6">
+          <Input
+            placeholder="🔍 Buscar por título, ubicación o categoría..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="max-w-3xl mx-auto"
+          />
         </div>
 
-        {/* Tarjetas de acciones */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Link href={`/${hotel}/nueva-averia`} className="group">
-            <Card className="p-8 bg-white hover:shadow-lg transition-all duration-200 border-2 border-slate-200 hover:border-blue-500 cursor-pointer">
-              <div className="flex flex-col items-center text-center gap-4">
-                <div className="p-4 bg-blue-600 rounded-full group-hover:scale-110 transition-transform">
-                  <Plus className="h-8 w-8 text-white" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold text-slate-900 mb-2">Nueva Avería</h2>
-                  <p className="text-sm text-slate-600">Registrar un nuevo problema</p>
-                </div>
-              </div>
-            </Card>
-          </Link>
+        {loading ? (
+          <p className="text-center text-slate-500">Cargando averías resueltas...</p>
+        ) : filteredIssues.length === 0 ? (
+          <Card className="p-8 text-center">
+            <p className="text-slate-600">No hay averías resueltas registradas.</p>
+          </Card>
+        ) : (
+          <div className="overflow-x-auto bg-white rounded-lg shadow print:shadow-none">
+            <table className="w-full border-collapse">
+              <thead className="bg-slate-100 border-b border-slate-200">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Estado</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Título</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Ubicación</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Categoría</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Reportado por</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Resuelto por</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Fecha creación</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Fecha resolución</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Tiempo</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">
+                    Materiales / Repuestos
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                {filteredIssues.map((issue) => (
+                  <tr key={issue.id} className="hover:bg-slate-50">
+                    <td className="px-4 py-3">
+                      <Badge className="bg-green-100 text-green-700">RESUELTA</Badge>
+                    </td>
+                    <td className="px-4 py-3 font-medium text-slate-900">{issue.title}</td>
+                    <td className="px-4 py-3 text-slate-600">{issue.location}</td>
+                    <td className="px-4 py-3 text-slate-600">{issue.category}</td>
+                    <td className="px-4 py-3 text-slate-600">{issue.reported_by}</td>
+                    <td className="px-4 py-3 text-slate-600">{issue.resolution_responsible || "—"}</td>
+                    <td className="px-4 py-3 text-slate-600">
+                      {new Date(issue.created_at).toLocaleDateString("es-ES")}
+                    </td>
+                    <td className="px-4 py-3 text-slate-600">
+                      {issue.resolved_at ? new Date(issue.resolved_at).toLocaleDateString("es-ES") : "—"}
+                    </td>
+                    <td className="px-4 py-3 text-slate-600">
+                      {issue.created_at && issue.resolved_at
+                        ? getTimeDifference(issue.created_at, issue.resolved_at)
+                        : "—"}
+                    </td>
 
-          <Link href={`/${hotel}/pendientes`} className="group">
-            <Card className="p-8 bg-white hover:shadow-lg transition-all duration-200 border-2 border-slate-200 hover:border-red-500 cursor-pointer">
-              <div className="flex flex-col items-center text-center gap-4">
-                <div className="p-4 bg-red-600 rounded-full group-hover:scale-110 transition-transform">
-                  <Clock className="h-8 w-8 text-white" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold text-slate-900 mb-2">Averías Pendientes</h2>
-                  <p className="text-sm text-slate-600">Ver averías sin resolver</p>
-                </div>
-              </div>
-            </Card>
-          </Link>
-
-          <Link href={`/${hotel}/resueltas`} className="group">
-            <Card className="p-8 bg-white hover:shadow-lg transition-all duration-200 border-2 border-slate-200 hover:border-green-500 cursor-pointer">
-              <div className="flex flex-col items-center text-center gap-4">
-                <div className="p-4 bg-green-600 rounded-full group-hover:scale-110 transition-transform">
-                  <CheckCircle2 className="h-8 w-8 text-white" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold text-slate-900 mb-2">Averías Resueltas</h2>
-                  <p className="text-sm text-slate-600">Historial de problemas</p>
-                </div>
-              </div>
-            </Card>
-          </Link>
-
-          <Link href={`/${hotel}/preventivo`} className="group">
-            <Card className="p-8 bg-white hover:shadow-lg transition-all duration-200 border-2 border-slate-200 hover:border-amber-500 cursor-pointer">
-              <div className="flex flex-col items-center text-center gap-4">
-                <div className="p-4 bg-amber-600 rounded-full group-hover:scale-110 transition-transform">
-                  <Calendar className="h-8 w-8 text-white" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold text-slate-900 mb-2">Mantenimiento Preventivo</h2>
-                  <p className="text-sm text-slate-600">Tareas programadas</p>
-                </div>
-              </div>
-            </Card>
-          </Link>
-        </div>
+                    {/* 🧱 Materiales usados */}
+                    <td className="px-4 py-3 text-slate-600">
+                      {issue.materials_used ? (
+                        <ul className="list-disc list-inside text-sm text-slate-700">
+                          {JSON.parse(issue.materials_used).map((m: any, i: number) => (
+                            <li key={i}>
+                              {m.name} — <span className="text-slate-500">{m.quantity} ud.</span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <span className="italic text-slate-400">Sin materiales usados</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </main>
     </div>
   )
