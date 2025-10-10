@@ -11,6 +11,8 @@ import Link from "next/link"
 import { RoomInspectionModal } from "@/components/room-inspection-modal"
 import { exportReportToPDF } from "@/lib/export-report"
 import { exportReportToExcel } from "@/lib/export-excel"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 
 interface Room {
   id: string
@@ -38,6 +40,9 @@ export default function RoomInspectionPage() {
   const [selectedFloor, setSelectedFloor] = useState<string>("")
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null)
   const [loading, setLoading] = useState(true)
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState<"complete" | "pending" | "not_inspected" | null>(
+    null,
+  )
 
   useEffect(() => {
     fetchRooms()
@@ -163,11 +168,34 @@ export default function RoomInspectionPage() {
     }
   }
 
+  const handleStatusClick = (status: "complete" | "pending" | "not_inspected") => {
+    setSelectedStatusFilter(status)
+  }
+
+  const getFilteredRooms = () => {
+    if (!selectedStatusFilter) return []
+
+    return rooms.filter((room) => {
+      const status = roomStatuses[room.room_number]
+      return status && status.status === selectedStatusFilter
+    })
+  }
+
+  const getStatusLabel = (status: "complete" | "pending" | "not_inspected") => {
+    switch (status) {
+      case "complete":
+        return "Completas"
+      case "pending":
+        return "Pendientes"
+      case "not_inspected":
+        return "Sin revisar"
+    }
+  }
+
   const floors = Array.from(
     new Set(rooms.map((r) => r.floor).filter((f) => f !== null && f !== undefined && !isNaN(f))),
   ).sort((a, b) => a - b)
 
-  // ✅ Nueva protección: nunca renderizamos Tabs si no hay pisos válidos
   const shouldRenderTabs = !loading && floors.length > 0 && selectedFloor !== "none"
 
   return (
@@ -243,7 +271,10 @@ export default function RoomInspectionPage() {
 
             {/* Stats */}
             <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card className="p-4 flex items-center gap-3">
+              <Card
+                className="p-4 flex items-center gap-3 cursor-pointer hover:shadow-lg transition-all"
+                onClick={() => handleStatusClick("complete")}
+              >
                 <CheckCircle className="h-8 w-8 text-green-600" />
                 <div>
                   <p className="text-sm text-slate-600">Completas</p>
@@ -253,7 +284,10 @@ export default function RoomInspectionPage() {
                 </div>
               </Card>
 
-              <Card className="p-4 flex items-center gap-3">
+              <Card
+                className="p-4 flex items-center gap-3 cursor-pointer hover:shadow-lg transition-all"
+                onClick={() => handleStatusClick("pending")}
+              >
                 <AlertCircle className="h-8 w-8 text-yellow-600" />
                 <div>
                   <p className="text-sm text-slate-600">Pendientes</p>
@@ -263,7 +297,10 @@ export default function RoomInspectionPage() {
                 </div>
               </Card>
 
-              <Card className="p-4 flex items-center gap-3">
+              <Card
+                className="p-4 flex items-center gap-3 cursor-pointer hover:shadow-lg transition-all"
+                onClick={() => handleStatusClick("not_inspected")}
+              >
                 <Clock className="h-8 w-8 text-slate-400" />
                 <div>
                   <p className="text-sm text-slate-600">Sin revisar</p>
@@ -290,6 +327,85 @@ export default function RoomInspectionPage() {
 
       {/* Modal */}
       {selectedRoom && <RoomInspectionModal room={selectedRoom} hotel={hotel} onClose={handleCloseModal} />}
+
+      {/* Status Filter Dialog */}
+      <Dialog open={selectedStatusFilter !== null} onOpenChange={() => setSelectedStatusFilter(null)}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {selectedStatusFilter === "complete" && <CheckCircle className="h-5 w-5 text-green-600" />}
+              {selectedStatusFilter === "pending" && <AlertCircle className="h-5 w-5 text-yellow-600" />}
+              {selectedStatusFilter === "not_inspected" && <Clock className="h-5 w-5 text-slate-400" />}
+              Habitaciones {selectedStatusFilter && getStatusLabel(selectedStatusFilter)}
+            </DialogTitle>
+            <DialogDescription>
+              Lista de habitaciones con estado:{" "}
+              {selectedStatusFilter && getStatusLabel(selectedStatusFilter).toLowerCase()}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="mt-4">
+            {getFilteredRooms().length === 0 ? (
+              <p className="text-center text-slate-600 py-8">No hay habitaciones con este estado.</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Habitación</TableHead>
+                    <TableHead>Planta</TableHead>
+                    <TableHead>Estado</TableHead>
+                    <TableHead>Última inspección</TableHead>
+                    <TableHead>Acción</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {getFilteredRooms().map((room) => {
+                    const status = roomStatuses[room.room_number]
+                    return (
+                      <TableRow key={room.id}>
+                        <TableCell className="font-medium">{room.room_number}</TableCell>
+                        <TableCell>Planta {room.floor}</TableCell>
+                        <TableCell>
+                          <span
+                            className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+                              status?.status === "complete"
+                                ? "bg-green-100 text-green-700"
+                                : status?.status === "pending"
+                                  ? "bg-yellow-100 text-yellow-700"
+                                  : "bg-slate-100 text-slate-700"
+                            }`}
+                          >
+                            {status?.status === "complete" && "Completa"}
+                            {status?.status === "pending" && "Pendiente"}
+                            {status?.status === "not_inspected" && "Sin revisar"}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          {status?.lastInspection
+                            ? new Date(status.lastInspection).toLocaleDateString("es-ES")
+                            : "Nunca"}
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setSelectedStatusFilter(null)
+                              handleRoomClick(room)
+                            }}
+                          >
+                            Ver detalles
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
