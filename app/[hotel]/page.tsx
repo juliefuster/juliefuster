@@ -34,21 +34,14 @@ export default function HotelDashboard() {
   const fetchStats = async () => {
     try {
       // 🔹 Consulta todas las averías del hotel seleccionado
-      const { data, error } = await supabase
-        .from("maintenance_tasks")
-        .select("status")
-        .eq("hotel", hotel)
+      const { data, error } = await supabase.from("maintenance_tasks").select("status").eq("hotel", hotel)
 
       if (error) throw error
 
       // 🔹 Calcula los totales
       const total = data.length
-      const pending = data.filter((task) =>
-        task.status?.toLowerCase().includes("pendiente")
-      ).length
-      const resolved = data.filter((task) =>
-        task.status?.toLowerCase().includes("resuelta")
-      ).length
+      const pending = data.filter((task) => task.status?.toLowerCase().includes("pendiente")).length
+      const resolved = data.filter((task) => task.status?.toLowerCase().includes("resuelta")).length
 
       setStats({ total, pending, resolved })
     } catch (error) {
@@ -72,10 +65,7 @@ export default function HotelDashboard() {
                 <p className="text-sm text-slate-600">Sistema de Mantenimiento</p>
               </div>
             </div>
-            <Link
-              href="/"
-              className="text-sm text-slate-600 hover:text-slate-900"
-            >
+            <Link href="/" className="text-sm text-slate-600 hover:text-slate-900">
               Cambiar hotel
             </Link>
           </div>
@@ -90,9 +80,7 @@ export default function HotelDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-slate-600">Total</p>
-                <p className="text-3xl font-bold text-slate-900 mt-1">
-                  {stats.total}
-                </p>
+                <p className="text-3xl font-bold text-slate-900 mt-1">{stats.total}</p>
               </div>
               <div className="p-3 bg-slate-100 rounded-lg">
                 <Wrench className="h-6 w-6 text-slate-600" />
@@ -104,9 +92,7 @@ export default function HotelDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-red-700">Pendientes</p>
-                <p className="text-3xl font-bold text-red-600 mt-1">
-                  {stats.pending}
-                </p>
+                <p className="text-3xl font-bold text-red-600 mt-1">{stats.pending}</p>
               </div>
               <div className="p-3 bg-red-100 rounded-lg">
                 <Clock className="h-6 w-6 text-red-600" />
@@ -118,9 +104,7 @@ export default function HotelDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-green-700">Resueltas</p>
-                <p className="text-3xl font-bold text-green-600 mt-1">
-                  {stats.resolved}
-                </p>
+                <p className="text-3xl font-bold text-green-600 mt-1">{stats.resolved}</p>
               </div>
               <div className="p-3 bg-green-100 rounded-lg">
                 <CheckCircle2 className="h-6 w-6 text-green-600" />
@@ -130,7 +114,7 @@ export default function HotelDashboard() {
         </div>
 
         {/* Tarjetas de acciones */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
           <Link href={`/${hotel}/nueva-averia`} className="group">
             <Card className="p-8 bg-white hover:shadow-lg transition-all duration-200 border-2 border-slate-200 hover:border-blue-500 cursor-pointer">
               <div className="flex flex-col items-center text-center gap-4">
@@ -138,12 +122,8 @@ export default function HotelDashboard() {
                   <Plus className="h-8 w-8 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-slate-900 mb-2">
-                    Nueva Avería
-                  </h2>
-                  <p className="text-sm text-slate-600">
-                    Registrar un nuevo problema
-                  </p>
+                  <h2 className="text-xl font-bold text-slate-900 mb-2">Nueva Avería</h2>
+                  <p className="text-sm text-slate-600">Registrar un nuevo problema</p>
                 </div>
               </div>
             </Card>
@@ -156,12 +136,8 @@ export default function HotelDashboard() {
                   <Clock className="h-8 w-8 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-slate-900 mb-2">
-                    Averías Pendientes
-                  </h2>
-                  <p className="text-sm text-slate-600">
-                    Ver averías sin resolver
-                  </p>
+                  <h2 className="text-xl font-bold text-slate-900 mb-2">Averías Pendientes</h2>
+                  <p className="text-sm text-slate-600">Ver averías sin resolver</p>
                 </div>
               </div>
             </Card>
@@ -174,9 +150,7 @@ export default function HotelDashboard() {
                   <CheckCircle2 className="h-8 w-8 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-slate-900 mb-2">
-                    Averías Resueltas
-                  </h2>
+                  <h2 className="text-xl font-bold text-slate-900 mb-2">Averías Resueltas</h2>
                   <p className="text-sm text-slate-600">Historial de problemas</p>
                 </div>
               </div>
@@ -190,10 +164,22 @@ export default function HotelDashboard() {
                   <Calendar className="h-8 w-8 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-slate-900 mb-2">
-                    Mantenimiento Preventivo
-                  </h2>
+                  <h2 className="text-xl font-bold text-slate-900 mb-2">Mantenimiento Preventivo</h2>
                   <p className="text-sm text-slate-600">Tareas programadas</p>
+                </div>
+              </div>
+            </Card>
+          </Link>
+
+          <Link href={`/${hotel}/revisiones`} className="group">
+            <Card className="p-8 bg-white hover:shadow-lg transition-all duration-200 border-2 border-slate-200 hover:border-purple-500 cursor-pointer">
+              <div className="flex flex-col items-center text-center gap-4">
+                <div className="p-4 bg-purple-600 rounded-full group-hover:scale-110 transition-transform">
+                  <Building2 className="h-8 w-8 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-slate-900 mb-2">Revisión de Habitaciones</h2>
+                  <p className="text-sm text-slate-600">Inspeccionar habitaciones</p>
                 </div>
               </div>
             </Card>
