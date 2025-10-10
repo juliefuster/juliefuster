@@ -271,19 +271,30 @@ export default function PreventiveMaintenance() {
     }
 
     try {
+      const fumDate = new Date(fumigationDate)
+      const nextDate = new Date(fumDate)
+      nextDate.setMonth(nextDate.getMonth() + 3)
+
+      const roomsList = `Habitaciones fumigadas: ${selectedRooms.join(", ")}`
+      const fullObservations = observations.trim() ? `${roomsList}\n\n${observations.trim()}` : roomsList
+
       const response = await fetch("/api/fumigation", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           hotel,
-          fumigatedRooms: selectedRooms,
-          operatorName: operatorName.trim(),
-          observations: observations.trim() || null,
-          fumigationDate,
+          date: fumigationDate, // Changed from fumigationDate to date
+          operator_name: operatorName.trim(), // Changed from operatorName to operator_name
+          observations: fullObservations, // Include rooms list in observations
+          next_date: nextDate.toISOString().split("T")[0], // Calculate next fumigation date
         }),
       })
 
-      if (!response.ok) throw new Error("Error al registrar fumigación")
+      if (!response.ok) {
+        const errorData = await response.json()
+        console.error("[v0] Fumigation API error:", errorData)
+        throw new Error(errorData.error || "Error al registrar fumigación")
+      }
 
       alert("Fumigación registrada exitosamente")
       setFumigationDialogOpen(false)
@@ -306,7 +317,7 @@ export default function PreventiveMaintenance() {
         ),
       )
     } catch (error) {
-      console.error("Error:", error)
+      console.error("[v0] Error submitting fumigation:", error)
       alert("Error al registrar la fumigación")
     }
   }

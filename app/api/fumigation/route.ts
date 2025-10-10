@@ -1,43 +1,43 @@
 import { NextResponse } from "next/server"
-import { dataSource } from "../../../lib/data-source"
-
-export async function GET(request: Request) {
-  try {
-    const { searchParams } = new URL(request.url)
-    const hotel = searchParams.get("hotel")
-
-    if (!hotel) {
-      return NextResponse.json([], { status: 200 })
-    }
-
-    const records = await dataSource.getFumigationRecords(hotel)
-    return NextResponse.json(records)
-  } catch (err: any) {
-    console.error("Error fetching fumigation records:", err.message)
-    return NextResponse.json([], { status: 200 })
-  }
-}
+import { createClient } from "@/lib/supabase/server"
 
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { hotel, fumigatedRooms, operatorName, observations, date } = body
+    console.log("[v0] Fumigation POST request body:", body)
 
-    if (!hotel || !fumigatedRooms || !operatorName) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
+    const { hotel, date, operator_name, observations, next_date } = body
+
+    if (!hotel || !date || !operator_name) {
+      console.error("[v0] Missing required fields:", { hotel, date, operator_name })
+      return NextResponse.json({ error: "Faltan datos obligatorios (hotel, date o operator_name)" }, { status: 400 })
     }
 
-    const result = await dataSource.createFumigationRecord({
-      hotel,
-      fumigatedRooms,
-      operatorName,
-      observations,
-      date,
-    })
+    const supabase = createClient()
 
-    return NextResponse.json({ success: true, data: result })
+    const { data, error } = await supabase
+      .from("fumigation_records")
+      .insert([
+        {
+          hotel,
+          date,
+          operator_name,
+          observations: observations || "",
+          next_date: next_date || null,
+        },
+      ])
+      .select()
+
+    if (error) {
+      console.error("[v0] Supabase insert error:", error)
+      throw error
+    }
+
+    console.log("[v0] Fumigation record saved successfully:", data)
+
+    return NextResponse.json({ message: "Registro guardado correctamente", data }, { status: 201 })
   } catch (err: any) {
-    console.error("Error creating fumigation record:", err.message)
-    return NextResponse.json({ error: "Failed to create fumigation record", details: err.message }, { status: 500 })
+    console.error("[v0] Error al guardar fumigación:", err.message)
+    return NextResponse.json({ error: "No se pudo guardar la fumigación", details: err.message }, { status: 500 })
   }
 }
