@@ -30,11 +30,18 @@ interface InspectionItem {
 
 const ROOM_SECTIONS = {
   Dormitorio: [
+    "Nº de Hab.",
     "Escritorio",
     "Mesitas de noche",
     "Apliques",
-    "Aire acondicionado",
+    "Enchufes",
+    "Aire acondicionado/termostato",
+    "Cama",
+    "Armario",
+    "Sillas",
+    "Posa Maleta",
     "Minibar",
+    "Teléfono",
     "Televisor",
     "Caja fuerte",
     "Luces techo",
@@ -52,9 +59,12 @@ const ROOM_SECTIONS = {
     "Luces baño",
     "Suelo baño",
     "Paredes baño",
+    "Puerta baño", 
     "Toallero",
+    "Colgadores",
+    "Porta rollo papel higienico",
   ],
-  "Terraza/Balcón": ["Barandilla", "Pavimento", "Desagüe", "Mobiliario"],
+  "Terraza/Balcón": ["Barandilla", "Pavimento", "Desagüe", "Mobiliario","Luces","Grifo","Suelo","Pared","Separadores pared"],
 }
 
 export function RoomInspectionModal({
