@@ -44,14 +44,15 @@ const ROOM_SECTIONS = {
     "Ventanas / cortinas",
   ],
   Baño: [
-    "Lavabo",
-    "Inodoro",
+    "Pica",
+    "WC",
     "Ducha / Bañera",
     "Grifería",
     "Extractor",
     "Luces baño",
     "Suelo baño",
     "Paredes baño",
+    "Toallero",
   ],
   "Terraza/Balcón": ["Barandilla", "Pavimento", "Desagüe", "Mobiliario"],
 }

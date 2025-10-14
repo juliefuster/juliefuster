@@ -1,43 +1,61 @@
-import { NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
+import { NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json()
-    console.log("[v0] Fumigation POST request body:", body)
+    const body = await request.json();
 
-    const { hotel, date, operator_name, observations, next_date } = body
+    // Extraemos y normalizamos campos del cuerpo
+    const hotel = body.hotel;
+    const dateInput = body.date ?? body.fecha ?? body.fechaFumigacion;
+    const operatorName =
+      body.operatorName ?? body.operator_name ?? body.responsable;
+    const observations = body.observations ?? body.comentarios ?? "";
+    const nextDateInput = body.nextDate ?? body.next_date ?? null;
 
-    if (!hotel || !date || !operator_name) {
-      console.error("[v0] Missing required fields:", { hotel, date, operator_name })
-      return NextResponse.json({ error: "Faltan datos obligatorios (hotel, date o operator_name)" }, { status: 400 })
+    // Validar campos obligatorios
+    if (!hotel || !dateInput || !operatorName) {
+      return NextResponse.json(
+        { error: "Faltan campos obligatorios (hotel, date, operatorName)" },
+        { status: 400 }
+      );
     }
 
-    const supabase = createClient()
+    // Función para convertir fecha a formato YYYY-MM-DD
+    const formatDate = (d: string) => new Date(d).toISOString().split("T")[0];
 
-    const { data, error } = await supabase
+    // Objeto a insertar
+    const payload = {
+      hotel,
+      date: formatDate(dateInput),
+      operator_name: operatorName,
+      observations,
+      next_date: nextDateInput ? formatDate(nextDateInput) : null,
+      created_at: new Date().toISOString(),
+    };
+
+    const supabase = createClient();
+
+    // Insertar registro en la tabla
+    const { error } = await supabase
       .from("fumigation_records")
-      .insert([
-        {
-          hotel,
-          date,
-          operator_name,
-          observations: observations || "",
-          next_date: next_date || null,
-        },
-      ])
-      .select()
+      .insert([payload]);
 
     if (error) {
-      console.error("[v0] Supabase insert error:", error)
-      throw error
+      console.error("❌ Error al insertar en fumigation_records:", error.message);
+      throw error;
     }
 
-    console.log("[v0] Fumigation record saved successfully:", data)
-
-    return NextResponse.json({ message: "Registro guardado correctamente", data }, { status: 201 })
+    console.log("✅ Registro de fumigación guardado correctamente");
+    return NextResponse.json({ success: true });
   } catch (err: any) {
-    console.error("[v0] Error al guardar fumigación:", err.message)
-    return NextResponse.json({ error: "No se pudo guardar la fumigación", details: err.message }, { status: 500 })
+    console.error("💥 Error general al guardar fumigación:", err?.message || err);
+    return NextResponse.json(
+      {
+        error: "No se pudo guardar la fumigación",
+        details: err?.message ?? String(err),
+      },
+      { status: 500 }
+    );
   }
 }
