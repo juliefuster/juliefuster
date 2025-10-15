@@ -1,77 +1,72 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { supabase } from "@/lib/supabase/client"
+import { createClient } from "@/lib/supabase/server"
 
-// 📍 GET → obtener registros de limpieza de filtros
 export async function GET(request: NextRequest) {
   try {
+    const supabase = createClient()
     const { searchParams } = new URL(request.url)
     const hotel = searchParams.get("hotel")
 
-    // Consultar los registros desde Supabase
-    let query = supabase
-      .from("filter_cleanings") // 👈 cambia si tu tabla se llama distinto
-      .select("*")
-      .order("date", { ascending: false })
-
-    if (hotel) {
-      query = query.eq("hotel", hotel)
-    }
-
-    const { data, error } = await query
-
-    if (error) {
-      console.error("❌ Error al obtener registros de Supabase:", error)
-      throw error
-    }
-
-    return NextResponse.json(data)
-  } catch (error) {
-    console.error("Error fetching filter cleaning records:", error)
-    return NextResponse.json(
-      { error: "Error al obtener los registros de limpieza de filtros" },
-      { status: 500 }
-    )
-  }
-}
-
-// 📍 POST → crear un nuevo registro de limpieza de filtros
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json()
-    const { hotel, cleanedFilters, operatorName, observations } = body
-
-    if (!hotel || !cleanedFilters || !operatorName) {
-      return NextResponse.json(
-        { error: "Faltan campos obligatorios" },
-        { status: 400 }
-      )
+    if (!hotel) {
+      return NextResponse.json({ error: "Hotel parameter is required" }, { status: 400 })
     }
 
     const { data, error } = await supabase
-      .from("filter_cleanings")
+      .from("filter_cleaning_records")
+      .select("*")
+      .eq("hotel", hotel)
+      .order("created_at", { ascending: false })
+
+    if (error) {
+      console.error("[v0] Error fetching filter cleaning records:", error)
+      throw error
+    }
+
+    console.log("[v0] Filter cleaning records fetched:", data?.length || 0)
+    return NextResponse.json(data || [])
+  } catch (error) {
+    console.error("[v0] Error in GET /api/filter-cleaning:", error)
+    return NextResponse.json({ error: "Failed to fetch filter cleaning records" }, { status: 500 })
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const supabase = createClient()
+    const body = await request.json()
+    const { hotel, cleaned_filters, operator_name, observations } = body
+
+    if (!hotel || !cleaned_filters || !operator_name) {
+      return NextResponse.json(
+        { error: "Missing required fields: hotel, cleaned_filters, operator_name" },
+        { status: 400 },
+      )
+    }
+
+    console.log("[v0] Creating filter cleaning record:", { hotel, cleaned_filters, operator_name })
+
+    const { data, error } = await supabase
+      .from("filter_cleaning_records")
       .insert([
         {
           hotel,
-          cleaned_filters: cleanedFilters,
-          operator_name: operatorName,
+          cleaned_filters: cleaned_filters,
+          operator_name: operator_name,
           observations: observations || null,
-          date: new Date().toISOString(),
         },
       ])
       .select()
       .single()
 
     if (error) {
-      console.error("❌ Error al crear registro en Supabase:", error)
+      console.error("[v0] Error creating filter cleaning record:", error)
       throw error
     }
 
+    console.log("[v0] Filter cleaning record created successfully")
     return NextResponse.json(data, { status: 201 })
   } catch (error) {
-    console.error("Error creating filter cleaning record:", error)
-    return NextResponse.json(
-      { error: "Error al crear el registro de limpieza de filtros" },
-      { status: 500 }
-    )
+    console.error("[v0] Error in POST /api/filter-cleaning:", error)
+    return NextResponse.json({ error: "Failed to create filter cleaning record" }, { status: 500 })
   }
 }

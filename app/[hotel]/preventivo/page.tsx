@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { eachDayOfInterval, startOfMonth, endOfMonth } from "date-fns"
+import { Calendar } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
   ArrowLeft,
@@ -47,14 +49,20 @@ export default function PreventiveMaintenance() {
 
   const [pumpDialogOpen, setPumpDialogOpen] = useState(false)
   const [fumigationDialogOpen, setFumigationDialogOpen] = useState(false)
+  const [filterCleaningDialogOpen, setFilterCleaningDialogOpen] = useState(false)
   const [selectedPump, setSelectedPump] = useState<1 | 2 | null>(null)
   const [operatorName, setOperatorName] = useState("")
   const [observations, setObservations] = useState("")
   const [purgePerformed, setPurgePerformed] = useState<boolean | null>(null)
   const [selectedRooms, setSelectedRooms] = useState<string[]>([])
   const [fumigationDate, setFumigationDate] = useState(new Date().toISOString().split("T")[0])
+  const [filterCleaningDate, setFilterCleaningDate] = useState(new Date().toISOString().split("T")[0])
+  const [selectedFilters, setSelectedFilters] = useState<string[]>([])
   const [lastPumpChange, setLastPumpChange] = useState<string | null>(null)
   const [lastFumigation, setLastFumigation] = useState<string | null>(null)
+  const [lastFilterCleaning, setLastFilterCleaning] = useState<string | null>(null)
+  const [upcomingTasks, setUpcomingTasks] = useState<any[]>([])
+  const [loadingUpcoming, setLoadingUpcoming] = useState(false)
 
   // Room numbers for fumigation
   const rooms = [
@@ -131,11 +139,35 @@ export default function PreventiveMaintenance() {
           const fumData = await fumRes.json()
           setLastFumigation(fumData.lastDate)
         }
+
+        const filterRes = await fetch(`/api/filter-cleaning/last-date?hotel=${hotel}`)
+        if (filterRes.ok) {
+          const filterData = await filterRes.json()
+          setLastFilterCleaning(filterData.lastDate)
+        }
       } catch (error) {
         console.error("Error fetching last dates:", error)
       }
     }
     fetchLastDates()
+  }, [hotel])
+
+  useEffect(() => {
+    const fetchUpcomingTasks = async () => {
+      setLoadingUpcoming(true)
+      try {
+        const response = await fetch(`/api/preventive-maintenance/upcoming?hotel=${hotel}`)
+        if (response.ok) {
+          const data = await response.json()
+          setUpcomingTasks(data.tasks || [])
+        }
+      } catch (error) {
+        console.error("Error fetching upcoming tasks:", error)
+      } finally {
+        setLoadingUpcoming(false)
+      }
+    }
+    fetchUpcomingTasks()
   }, [hotel])
 
   const [tasks, setTasks] = useState<Task[]>([
@@ -271,10 +303,6 @@ export default function PreventiveMaintenance() {
     }
 
     try {
-      const fumDate = new Date(fumigationDate)
-      const nextDate = new Date(fumDate)
-      nextDate.setMonth(nextDate.getMonth() + 3)
-
       const roomsList = `Habitaciones fumigadas: ${selectedRooms.join(", ")}`
       const fullObservations = observations.trim() ? `${roomsList}\n\n${observations.trim()}` : roomsList
 
@@ -283,10 +311,9 @@ export default function PreventiveMaintenance() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           hotel,
-          date: fumigationDate, // Changed from fumigationDate to date
-          operator_name: operatorName.trim(), // Changed from operatorName to operator_name
-          observations: fullObservations, // Include rooms list in observations
-          next_date: nextDate.toISOString().split("T")[0], // Calculate next fumigation date
+          date: fumigationDate,
+          operator_name: operatorName.trim(),
+          observations: fullObservations,
         }),
       })
 
@@ -322,6 +349,57 @@ export default function PreventiveMaintenance() {
     }
   }
 
+  const handleFilterCleaningSubmit = async () => {
+    if (selectedFilters.length === 0 || !operatorName.trim()) {
+      alert("Por favor selecciona al menos un filtro e ingresa el nombre del responsable")
+      return
+    }
+
+    try {
+      const response = await fetch("/api/filter-cleaning", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          hotel,
+          date: filterCleaningDate,
+          operator_name: operatorName.trim(),
+          observations: observations.trim() || null,
+          cleaned_filters: selectedFilters,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        console.error("[v0] Filter cleaning API error:", errorData)
+        throw new Error(errorData.error || "Error al registrar limpieza de filtros")
+      }
+
+      alert("Limpieza de filtros registrada exitosamente")
+      setFilterCleaningDialogOpen(false)
+      setSelectedFilters([])
+      setOperatorName("")
+      setObservations("")
+      setFilterCleaningDate(new Date().toISOString().split("T")[0])
+
+      const filterRes = await fetch(`/api/filter-cleaning/last-date?hotel=${hotel}`)
+      if (filterRes.ok) {
+        const filterData = await filterRes.json()
+        setLastFilterCleaning(filterData.lastDate)
+      }
+
+      setTasks(
+        tasks.map((task) =>
+          task.id === 3
+            ? { ...task, status: "completed" as const, lastCompleted: new Date().toLocaleDateString() }
+            : task,
+        ),
+      )
+    } catch (error) {
+      console.error("[v0] Error submitting filter cleaning:", error)
+      alert("Error al registrar la limpieza de filtros")
+    }
+  }
+
   const handleCompleteTask = (taskId: number) => {
     if (taskId === 1) {
       setPumpDialogOpen(true)
@@ -329,6 +407,10 @@ export default function PreventiveMaintenance() {
     }
     if (taskId === 11) {
       setFumigationDialogOpen(true)
+      return
+    }
+    if (taskId === 3) {
+      setFilterCleaningDialogOpen(true)
       return
     }
 
@@ -343,6 +425,22 @@ export default function PreventiveMaintenance() {
 
   const handlePrint = () => {
     window.print()
+  }
+
+  const isOverdue = (dateString: string) => {
+    const taskDate = new Date(dateString)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    return taskDate < today
+  }
+
+  const getDaysUntil = (dateString: string) => {
+    const taskDate = new Date(dateString)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const diffTime = taskDate.getTime() - today.getTime()
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    return diffDays
   }
 
   return (
@@ -428,6 +526,11 @@ export default function PreventiveMaintenance() {
                                 Última fumigación: {new Date(lastFumigation).toLocaleDateString()}
                               </p>
                             )}
+                            {task.id === 3 && lastFilterCleaning && (
+                              <p className="text-xs text-slate-600 mb-2">
+                                Última limpieza: {new Date(lastFilterCleaning).toLocaleDateString()}
+                              </p>
+                            )}
                             <Button
                               size="sm"
                               className="w-full"
@@ -445,21 +548,144 @@ export default function PreventiveMaintenance() {
               )
             })}
           </TabsContent>
+<TabsContent value="calendar" className="space-y-6">
+  <Card>
+    <CardHeader className="flex flex-row items-center justify-between">
+      <div>
+        <CardTitle>Calendario de Tareas de Mantenimiento</CardTitle>
+        <CardDescription>Vista mensual con las próximas tareas programadas</CardDescription>
+      </div>
+    </CardHeader>
 
-          <TabsContent value="calendar" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Calendario de Tareas</CardTitle>
-                <CardDescription>Vista de tareas programadas para hoy</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-12 text-slate-500">
-                  <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Vista de calendario en desarrollo</p>
+    <CardContent>
+      {/* 🔹 Estado local del calendario */}
+      {(() => {
+        const [tasks, setTasks] = useState<any[]>([])
+        const [loading, setLoading] = useState(true)
+        const [currentMonth, setCurrentMonth] = useState(new Date())
+        const hotel = params.hotel as string
+
+        useEffect(() => {
+          const fetchCalendar = async () => {
+            try {
+              setLoading(true)
+              const res = await fetch(`/api/calendar?hotel=${hotel}`)
+              const data = await res.json()
+              setTasks(data.tasks || [])
+            } catch (err) {
+              console.error("Error cargando calendario:", err)
+            } finally {
+              setLoading(false)
+            }
+          }
+          fetchCalendar()
+        }, [hotel])
+
+        // Días del mes
+        const days = eachDayOfInterval({
+          start: startOfMonth(currentMonth),
+          end: endOfMonth(currentMonth),
+        })
+
+        return loading ? (
+          <div className="text-center py-12 text-slate-500">
+            <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
+            <p>Cargando calendario...</p>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {/* 🔹 Encabezado del mes */}
+            <div className="flex items-center justify-between">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  setCurrentMonth(
+                    new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1)
+                  )
+                }
+              >
+                ← Mes anterior
+              </Button>
+
+              <h2 className="text-lg font-semibold text-slate-800 capitalize">
+                {currentMonth.toLocaleString("es-ES", {
+                  month: "long",
+                  year: "numeric",
+                })}
+              </h2>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  setCurrentMonth(
+                    new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1)
+                  )
+                }
+              >
+                Mes siguiente →
+              </Button>
+            </div>
+
+            {/* 🔹 Cabecera de días */}
+            <div className="grid grid-cols-7 gap-2 text-center text-xs font-medium text-slate-600">
+              {["L", "M", "X", "J", "V", "S", "D"].map((d) => (
+                <div key={d} className="py-1 uppercase">
+                  {d}
                 </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+              ))}
+            </div>
+
+            {/* 🔹 Celdas del calendario */}
+            <div className="grid grid-cols-7 gap-2">
+              {days.map((day) => {
+                const dayISO = day.toISOString().split("T")[0]
+                const dayTasks = tasks.filter(
+                  (t) => new Date(t.date).toISOString().split("T")[0] === dayISO
+                )
+
+                return (
+                  <div
+                    key={dayISO}
+                    className="border rounded-md p-2 min-h-[90px] bg-white hover:bg-slate-50 transition-colors"
+                  >
+                    <div className="text-xs font-semibold text-slate-700 mb-1">
+                      {day.getDate()}
+                    </div>
+
+                    {dayTasks.length > 0 ? (
+                      <div className="space-y-1">
+                        {dayTasks.map((task: any, i: number) => (
+                          <div
+                            key={i}
+                            className={`text-[10px] px-1 py-0.5 rounded-md truncate ${
+                              task.type.includes("bomba")
+                                ? "bg-blue-100 text-blue-800"
+                                : task.type.includes("Filtro")
+                                ? "bg-green-100 text-green-800"
+                                : "bg-purple-100 text-purple-800"
+                            }`}
+                            title={`${task.type} — ${task.details}`}
+                          >
+                            {task.type}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-[9px] text-slate-300">—</div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )
+      })()}
+    </CardContent>
+  </Card>
+</TabsContent>
+
 
           <TabsContent value="history" className="space-y-6">
             <div className="grid gap-4 md:grid-cols-2">
@@ -491,6 +717,24 @@ export default function PreventiveMaintenance() {
                 </CardHeader>
                 <CardContent>
                   <Link href={`/${hotel}/preventivo/fumigacion`}>
+                    <Button className="w-full">
+                      <History className="h-4 w-4 mr-2" />
+                      Ver Historial
+                    </Button>
+                  </Link>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Wind className="h-5 w-5 text-green-600" />
+                    Historial de Limpieza de Filtros
+                  </CardTitle>
+                  <CardDescription>Ver todas las limpiezas de filtros registradas</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Link href={`/${hotel}/preventivo/limpieza-filtros`}>
                     <Button className="w-full">
                       <History className="h-4 w-4 mr-2" />
                       Ver Historial
@@ -645,6 +889,78 @@ export default function PreventiveMaintenance() {
                 Cancelar
               </Button>
               <Button onClick={handleFumigationSubmit} className="flex-1">
+                Guardar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Filter Cleaning Dialog */}
+      <Dialog open={filterCleaningDialogOpen} onOpenChange={setFilterCleaningDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Registrar Limpieza de Filtros</DialogTitle>
+            <DialogDescription>Selecciona los filtros limpiados e ingresa los detalles</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="filter-cleaning-date">Fecha de Limpieza *</Label>
+              <Input
+                id="filter-cleaning-date"
+                type="date"
+                value={filterCleaningDate}
+                onChange={(e) => setFilterCleaningDate(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label>Filtros Limpiados (Habitaciones) *</Label>
+              <div className="grid grid-cols-6 gap-2 mt-2 max-h-48 overflow-y-auto p-2 border rounded-lg">
+                {rooms.map((room) => (
+                  <div key={room} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`filter-${room}`}
+                      checked={selectedFilters.includes(room)}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setSelectedFilters([...selectedFilters, room])
+                        } else {
+                          setSelectedFilters(selectedFilters.filter((r) => r !== room))
+                        }
+                      }}
+                    />
+                    <label htmlFor={`filter-${room}`} className="text-sm cursor-pointer">
+                      {room}
+                    </label>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-slate-600 mt-2">Seleccionados: {selectedFilters.length} filtros</p>
+            </div>
+            <div>
+              <Label htmlFor="filter-operator">Responsable *</Label>
+              <Input
+                id="filter-operator"
+                value={operatorName}
+                onChange={(e) => setOperatorName(e.target.value)}
+                placeholder="Nombre del responsable"
+              />
+            </div>
+            <div>
+              <Label htmlFor="filter-observations">Observaciones</Label>
+              <Textarea
+                id="filter-observations"
+                value={observations}
+                onChange={(e) => setObservations(e.target.value)}
+                placeholder="Estado de los filtros, incidencias, etc."
+                rows={3}
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setFilterCleaningDialogOpen(false)} className="flex-1">
+                Cancelar
+              </Button>
+              <Button onClick={handleFilterCleaningSubmit} className="flex-1">
                 Guardar
               </Button>
             </div>

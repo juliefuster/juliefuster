@@ -1,30 +1,31 @@
-import { NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
+import { NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
 
-export async function GET(request: Request) {
+export async function POST(request: Request) {
   try {
-    const { searchParams } = new URL(request.url)
-    const hotel = searchParams.get("hotel")
+    const body = await request.json();
+    const { hotel, date, operator_name, observations } = body;
 
-    if (!hotel) {
-      return NextResponse.json({ error: "Missing hotel parameter" }, { status: 400 })
+    if (!hotel || !date || !operator_name) {
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    const supabase = createClient()
+    const supabase = createClient();
 
-    const { data, error } = await supabase
+    // 👇 OJO: quitamos next_date y created_at del insert
+    const { error } = await supabase
       .from("fumigation_records")
-      .select("date")
-      .eq("hotel", hotel)
-      .order("date", { ascending: false })
-      .limit(1)
-      .single()
+      .insert([{ hotel, date, operator_name, observations: observations || "" }])
+      .select("id, hotel, date, operator_name, observations"); // 👈 sin next_date ni created_at
 
-    if (error && error.code !== "PGRST116") throw error // sin datos no es error fatal
+    if (error) throw error;
 
-    return NextResponse.json({ lastDate: data ? data.date : null })
+    return NextResponse.json({ success: true });
   } catch (err: any) {
-    console.error("Error fetching last fumigation date:", err.message)
-    return NextResponse.json({ error: "Failed to fetch last fumigation date", details: err.message }, { status: 500 })
+    console.error("💥 Error general al guardar fumigación:", err.message);
+    return NextResponse.json(
+      { error: "No se pudo guardar la fumigación", details: err.message },
+      { status: 500 }
+    );
   }
 }
