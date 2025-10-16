@@ -43,6 +43,11 @@ interface Task {
 }
 
 export default function PreventiveMaintenance() {
+// 📅 Día seleccionado en el calendario
+const [selectedDay, setSelectedDay] = useState<string | null>(null)
+const [selectedDayTasks, setSelectedDayTasks] = useState<any[]>([])
+const [dayDialogOpen, setDayDialogOpen] = useState(false)
+
   const params = useParams()
   const hotel = params.hotel as string
   const hotelName = hotel === "caledonian" ? "Hotel Caledonian" : hotel === "chi" ? "Hotel Chi" : hotel
@@ -63,6 +68,9 @@ export default function PreventiveMaintenance() {
   const [lastFilterCleaning, setLastFilterCleaning] = useState<string | null>(null)
   const [upcomingTasks, setUpcomingTasks] = useState<any[]>([])
   const [loadingUpcoming, setLoadingUpcoming] = useState(false)
+  // 📅 Estado del calendario
+const [currentMonth, setCurrentMonth] = useState(new Date())
+
 
   // Room numbers for fumigation
   const rooms = [
@@ -126,6 +134,22 @@ export default function PreventiveMaintenance() {
   ]
 
   useEffect(() => {
+  const fetchCalendarTasks = async () => {
+    try {
+      setLoadingUpcoming(true)
+      const res = await fetch(`/api/calendar?hotel=${hotel}`)
+      const data = await res.json()
+      setUpcomingTasks(data.tasks || [])
+    } catch (err) {
+      console.error("Error cargando calendario:", err)
+    } finally {
+      setLoadingUpcoming(false)
+    }
+  }
+  fetchCalendarTasks()
+}, [hotel])
+
+useEffect(() => {
     const fetchLastDates = async () => {
       try {
         const pumpRes = await fetch(`/api/pump-change/last-date?hotel=${hotel}`)
@@ -558,133 +582,108 @@ export default function PreventiveMaintenance() {
     </CardHeader>
 
     <CardContent>
-      {/* 🔹 Estado local del calendario */}
-      {(() => {
-        const [tasks, setTasks] = useState<any[]>([])
-        const [loading, setLoading] = useState(true)
-        const [currentMonth, setCurrentMonth] = useState(new Date())
-        const hotel = params.hotel as string
+      {/* 🔹 Estado del calendario */}
+      {loadingUpcoming ? (
+        <div className="text-center py-12 text-slate-500">
+          <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
+          <p>Cargando calendario...</p>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {/* 🔹 Navegación de meses */}
+          <div className="flex items-center justify-between">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                setCurrentMonth(
+                  new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1)
+                )
+              }
+            >
+              ← Mes anterior
+            </Button>
 
-        useEffect(() => {
-          const fetchCalendar = async () => {
-            try {
-              setLoading(true)
-              const res = await fetch(`/api/calendar?hotel=${hotel}`)
-              const data = await res.json()
-              setTasks(data.tasks || [])
-            } catch (err) {
-              console.error("Error cargando calendario:", err)
-            } finally {
-              setLoading(false)
-            }
-          }
-          fetchCalendar()
-        }, [hotel])
+            <h2 className="text-lg font-semibold text-slate-800 capitalize">
+              {currentMonth.toLocaleString("es-ES", { month: "long", year: "numeric" })}
+            </h2>
 
-        // Días del mes
-        const days = eachDayOfInterval({
-          start: startOfMonth(currentMonth),
-          end: endOfMonth(currentMonth),
-        })
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                setCurrentMonth(
+                  new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1)
+                )
+              }
+            >
+              Mes siguiente →
+            </Button>
+          </div>
 
-        return loading ? (
-          <div className="text-center py-12 text-slate-500">
-            <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>Cargando calendario...</p>
+          {/* 🔹 Cabecera de días */}
+          <div className="grid grid-cols-7 gap-2 text-center text-xs font-medium text-slate-600">
+            {["L", "M", "X", "J", "V", "S", "D"].map((d) => (
+              <div key={d} className="py-1 uppercase">
+                {d}
+              </div>
+            ))}
+          </div>
+
+          {/* 🔹 Celdas del calendario */}
+<div className="grid grid-cols-7 gap-2">
+  {eachDayOfInterval({
+    start: startOfMonth(currentMonth),
+    end: endOfMonth(currentMonth),
+  }).map((day) => {
+    const dayISO = day.toISOString().split("T")[0]
+    const dayTasks = upcomingTasks.filter(
+      (t) => new Date(t.date).toISOString().split("T")[0] === dayISO
+    )
+
+    return (
+      <div
+        key={dayISO}
+        className="border rounded-md p-2 min-h-[90px] bg-white hover:bg-blue-50 cursor-pointer transition-all"
+        onClick={() => {
+          setSelectedDay(dayISO)
+          setSelectedDayTasks(dayTasks)
+          setDayDialogOpen(true)
+        }}
+      >
+        <div className="text-xs font-semibold text-slate-700 mb-1">{day.getDate()}</div>
+
+        {dayTasks.length > 0 ? (
+          <div className="space-y-1">
+            {dayTasks.map((task: any, i: number) => (
+              <div
+                key={i}
+                className={`text-[10px] px-1 py-0.5 rounded-md truncate ${
+                  task.type.includes("bomba")
+                    ? "bg-blue-100 text-blue-800"
+                    : task.type.includes("Filtro")
+                    ? "bg-green-100 text-green-800"
+                    : "bg-purple-100 text-purple-800"
+                }`}
+                title={`${task.type} — ${task.details}`}
+              >
+                {task.type}
+              </div>
+            ))}
           </div>
         ) : (
-          <div className="space-y-6">
-            {/* 🔹 Encabezado del mes */}
-            <div className="flex items-center justify-between">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  setCurrentMonth(
-                    new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1)
-                  )
-                }
-              >
-                ← Mes anterior
-              </Button>
-
-              <h2 className="text-lg font-semibold text-slate-800 capitalize">
-                {currentMonth.toLocaleString("es-ES", {
-                  month: "long",
-                  year: "numeric",
-                })}
-              </h2>
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  setCurrentMonth(
-                    new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1)
-                  )
-                }
-              >
-                Mes siguiente →
-              </Button>
-            </div>
-
-            {/* 🔹 Cabecera de días */}
-            <div className="grid grid-cols-7 gap-2 text-center text-xs font-medium text-slate-600">
-              {["L", "M", "X", "J", "V", "S", "D"].map((d) => (
-                <div key={d} className="py-1 uppercase">
-                  {d}
+          <div className="text-[9px] text-slate-300">—</div>
+                  )}
                 </div>
-              ))}
-            </div>
-
-            {/* 🔹 Celdas del calendario */}
-            <div className="grid grid-cols-7 gap-2">
-              {days.map((day) => {
-                const dayISO = day.toISOString().split("T")[0]
-                const dayTasks = tasks.filter(
-                  (t) => new Date(t.date).toISOString().split("T")[0] === dayISO
-                )
-
-                return (
-                  <div
-                    key={dayISO}
-                    className="border rounded-md p-2 min-h-[90px] bg-white hover:bg-slate-50 transition-colors"
-                  >
-                    <div className="text-xs font-semibold text-slate-700 mb-1">
-                      {day.getDate()}
-                    </div>
-
-                    {dayTasks.length > 0 ? (
-                      <div className="space-y-1">
-                        {dayTasks.map((task: any, i: number) => (
-                          <div
-                            key={i}
-                            className={`text-[10px] px-1 py-0.5 rounded-md truncate ${
-                              task.type.includes("bomba")
-                                ? "bg-blue-100 text-blue-800"
-                                : task.type.includes("Filtro")
-                                ? "bg-green-100 text-green-800"
-                                : "bg-purple-100 text-purple-800"
-                            }`}
-                            title={`${task.type} — ${task.details}`}
-                          >
-                            {task.type}
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-[9px] text-slate-300">—</div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
+              )
+            })}
           </div>
-        )
-      })()}
+        </div>
+      )}
     </CardContent>
   </Card>
 </TabsContent>
+
 
 
           <TabsContent value="history" className="space-y-6">
@@ -967,6 +966,55 @@ export default function PreventiveMaintenance() {
           </div>
         </DialogContent>
       </Dialog>
+      {/* 📅 Dialog de Detalle del Día */}
+<Dialog open={dayDialogOpen} onOpenChange={setDayDialogOpen}>
+  <DialogContent className="max-w-lg">
+    <DialogHeader>
+      <DialogTitle>
+        Tareas del {selectedDay ? new Date(selectedDay).toLocaleDateString("es-ES") : ""}
+      </DialogTitle>
+      <DialogDescription>
+        Detalles de mantenimiento programado
+      </DialogDescription>
+    </DialogHeader>
+
+    {selectedDayTasks.length > 0 ? (
+      <div className="space-y-4">
+        {selectedDayTasks.map((task: any, i: number) => (
+          <Card key={i} className="border-slate-200">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">{task.type}</CardTitle>
+              <CardDescription>{task.frequency || "Tarea programada"}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {task.rooms?.length ? (
+                <div className="text-sm">
+                  <strong>Habitaciones:</strong>{" "}
+                  {task.rooms.join(", ")}
+                </div>
+              ) : (
+                <p className="text-sm text-slate-600 italic">No hay habitaciones asociadas</p>
+              )}
+              {task.operator_name && (
+                <p className="text-sm text-slate-600 mt-1">
+                  <strong>Operario:</strong> {task.operator_name}
+                </p>
+              )}
+              {task.observations && (
+                <p className="text-sm text-slate-600 mt-1">
+                  <strong>Obs.:</strong> {task.observations}
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    ) : (
+      <p className="text-slate-500 text-center py-6">No hay tareas para este día</p>
+    )}
+  </DialogContent>
+</Dialog>
+
 
       <style jsx global>{`
         @media print {
