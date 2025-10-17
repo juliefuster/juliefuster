@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { ArrowLeft, Printer, Bug } from "lucide-react"
+import { ArrowLeft, Printer, Bug, Search } from "lucide-react"
 
 interface FumigationRecord {
   id: string
@@ -13,19 +14,37 @@ interface FumigationRecord {
   date: string
   operator_name: string
   observations: string | null
-  rooms: string[] | null
+  rooms: string[]
 }
 
 export default function FumigationHistoryPage() {
   const params = useParams()
   const router = useRouter()
   const hotel = params.hotel as string
+
   const [records, setRecords] = useState<FumigationRecord[]>([])
+  const [filteredRecords, setFilteredRecords] = useState<FumigationRecord[]>([])
   const [loading, setLoading] = useState(true)
+  const [searchTerm, setSearchTerm] = useState("")
 
   useEffect(() => {
     fetchRecords()
   }, [hotel])
+
+  useEffect(() => {
+    if (!searchTerm.trim()) {
+      setFilteredRecords(records)
+      return
+    }
+    const term = searchTerm.toLowerCase()
+    const filtered = records.filter(
+      (r) =>
+        r.operator_name?.toLowerCase().includes(term) ||
+        (r.observations ?? "").toLowerCase().includes(term) ||
+        r.rooms?.some((room) => room.toLowerCase().includes(term))
+    )
+    setFilteredRecords(filtered)
+  }, [searchTerm, records])
 
   const fetchRecords = async () => {
     try {
@@ -34,10 +53,7 @@ export default function FumigationHistoryPage() {
       if (!response.ok) throw new Error("Failed to fetch records")
 
       const data = await response.json()
-
-      // Normaliza datos
       const formatted = data.map((r: any) => {
-        // Detecta habitaciones en el campo "observations"
         let extractedRooms: string[] = []
         let cleanedObservations = r.observations || ""
 
@@ -47,11 +63,9 @@ export default function FumigationHistoryPage() {
             .split(",")
             .map((room: string) => room.trim())
             .filter(Boolean)
-          // Elimina esa parte del texto para dejar solo las observaciones reales
           cleanedObservations = cleanedObservations.replace(match[0], "").trim()
         }
 
-        // Si la tabla ya tiene un campo "rooms" (jsonb)
         const parsedRooms =
           typeof r.rooms === "string" && r.rooms.startsWith("[")
             ? JSON.parse(r.rooms)
@@ -60,13 +74,16 @@ export default function FumigationHistoryPage() {
             : extractedRooms
 
         return {
-          ...r,
-          rooms: parsedRooms,
+          id: r.id,
+          hotel: r.hotel,
+          date: r.date,
+          operator_name: r.operator_name,
           observations: cleanedObservations || null,
+          rooms: parsedRooms || [],
         }
       })
-
       setRecords(formatted)
+      setFilteredRecords(formatted)
     } catch (error) {
       console.error("Error fetching fumigation records:", error)
     } finally {
@@ -74,22 +91,20 @@ export default function FumigationHistoryPage() {
     }
   }
 
-  const handlePrint = () => {
-    window.print()
-  }
+  const handlePrint = () => window.print()
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("es-ES", {
+  const formatDate = (dateString: string) =>
+    new Date(dateString).toLocaleDateString("es-ES", {
       year: "numeric",
       month: "long",
       day: "numeric",
       hour: "2-digit",
       minute: "2-digit",
     })
-  }
 
   return (
     <div className="container mx-auto p-6 max-w-7xl">
+      {/* Header */}
       <div className="flex items-center justify-between mb-6 print:mb-4">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={() => router.back()} className="print:hidden">
@@ -111,6 +126,20 @@ export default function FumigationHistoryPage() {
         </Button>
       </div>
 
+      {/* Buscador */}
+      <Card className="p-4 mb-6 print:hidden">
+        <div className="flex items-center gap-3">
+          <Search className="h-5 w-5 text-slate-500" />
+          <Input
+            placeholder="Buscar por operario, habitación u observación..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="flex-1"
+          />
+        </div>
+      </Card>
+
+      {/* Tabla */}
       <Card>
         <CardHeader>
           <CardTitle>Registros de Fumigación</CardTitle>
@@ -121,9 +150,9 @@ export default function FumigationHistoryPage() {
         <CardContent>
           {loading ? (
             <div className="text-center py-8 text-muted-foreground">Cargando registros...</div>
-          ) : records.length === 0 ? (
+          ) : filteredRecords.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              No hay registros de fumigación
+              No se encontraron registros
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -134,10 +163,11 @@ export default function FumigationHistoryPage() {
                     <TableHead>Operario</TableHead>
                     <TableHead>Habitaciones Fumigadas</TableHead>
                     <TableHead>Observaciones</TableHead>
+                    <TableHead>Estado</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {records.map((record) => (
+                  {filteredRecords.map((record) => (
                     <TableRow key={record.id}>
                       <TableCell className="whitespace-nowrap">
                         {formatDate(record.date)}
@@ -164,6 +194,17 @@ export default function FumigationHistoryPage() {
                           ? record.observations
                           : "—"}
                       </TableCell>
+                      <TableCell>
+                        {record.rooms && record.rooms.length > 0 ? (
+                          <span className="inline-flex items-center px-2 py-1 rounded-md bg-green-100 text-green-700 text-xs font-medium">
+                            Fumigada
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-1 rounded-md bg-red-100 text-red-700 text-xs font-medium">
+                            Pendiente
+                          </span>
+                        )}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -173,6 +214,7 @@ export default function FumigationHistoryPage() {
         </CardContent>
       </Card>
 
+      {/* Estilo para impresión */}
       <style jsx global>{`
         @media print {
           @page {
