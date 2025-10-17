@@ -1,307 +1,193 @@
-"use client";
+"use client"
 
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { ArrowLeft, Calendar, Search, User, FileText } from "lucide-react";
-import Link from "next/link";
-import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState } from "react"
+import { useParams, useRouter } from "next/navigation"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { ArrowLeft, Printer, Bug } from "lucide-react"
 
-/** Estructura REAL de la tabla fumigation_records */
-type FumigationRow = {
-  id: number;
-  hotel: string;
-  date: string;            // YYYY-MM-DD
-  operator_name: string;
-  observations: string | null;
-  next_date?: string | null;
-  created_at?: string | null;
-};
-
-/** Para pintar por si tu API devuelve otras claves antiguas */
-function normalize(row: any): FumigationRow {
-  // Acepta también nombres antiguos: fumigatedAt, operatorName, etc.
-  const date =
-    row?.date ??
-    row?.fumigatedAt ??
-    row?.fumigationDate ??
-    row?.created_at ??
-    null;
-
-  const operator_name =
-    row?.operator_name ?? row?.operatorName ?? row?.responsable ?? "";
-
-  return {
-    id: Number(row?.id ?? 0),
-    hotel: String(row?.hotel ?? ""),
-    date: date ? new Date(date).toISOString().slice(0, 10) : "",
-    operator_name,
-    observations: row?.observations ?? row?.comentarios ?? null,
-    next_date: row?.next_date ?? null,
-    created_at: row?.created_at ?? null,
-  };
+interface FumigationRecord {
+  id: string
+  hotel: string
+  date: string
+  operator_name: string
+  observations: string | null
+  rooms: string[] | null
 }
 
-export default function FumigationHistory() {
-  const params = useParams();
-  const hotel = (params?.hotel as string) || "chi";
-  const hotelName = hotel === "caledonian" ? "Hotel Caledonian" : "Hotel Chi";
-
-  const [records, setRecords] = useState<FumigationRow[]>([]);
-  const [filteredRecords, setFilteredRecords] = useState<FumigationRow[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [loading, setLoading] = useState(true);
-
-  // Formulario para crear registro sencillo
-  const [fumigationDate, setFumigationDate] = useState("");
-  const [responsible, setResponsible] = useState("");
-  const [observations, setObservations] = useState("");
+export default function FumigationHistoryPage() {
+  const params = useParams()
+  const router = useRouter()
+  const hotel = params.hotel as string
+  const [records, setRecords] = useState<FumigationRecord[]>([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetchRecords();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hotel]);
+    fetchRecords()
+  }, [hotel])
 
-  useEffect(() => {
-    if (!searchTerm.trim()) {
-      setFilteredRecords(records);
-      return;
-    }
-    const term = searchTerm.toLowerCase();
-    setFilteredRecords(
-      records.filter(
-        (r) =>
-          r.operator_name?.toLowerCase().includes(term) ||
-          (r.observations ?? "").toLowerCase().includes(term)
-      )
-    );
-  }, [searchTerm, records]);
-
-  async function fetchRecords() {
+  const fetchRecords = async () => {
     try {
-      setLoading(true);
-      const res = await fetch(`/api/fumigation?hotel=${encodeURIComponent(hotel)}`);
-      if (!res.ok) throw new Error(`GET /api/fumigation ${res.status}`);
-      const raw = await res.json();
-      const list: FumigationRow[] = Array.isArray(raw)
-        ? raw.map(normalize)
-        : Array.isArray(raw?.data)
-        ? raw.data.map(normalize)
-        : [];
-      setRecords(list);
-      setFilteredRecords(list);
-    } catch (err) {
-      console.error("Error fetching fumigation records:", err);
-      setRecords([]);
-      setFilteredRecords([]);
+      setLoading(true)
+      const response = await fetch(`/api/fumigation?hotel=${hotel}`)
+      if (!response.ok) throw new Error("Failed to fetch records")
+
+      const data = await response.json()
+
+      // Normaliza datos
+      const formatted = data.map((r: any) => {
+        // Detecta habitaciones en el campo "observations"
+        let extractedRooms: string[] = []
+        let cleanedObservations = r.observations || ""
+
+        const match = cleanedObservations.match(/habitaciones\s+fumigadas:\s*([0-9,\s]+)/i)
+        if (match) {
+          extractedRooms = match[1]
+            .split(",")
+            .map((room: string) => room.trim())
+            .filter(Boolean)
+          // Elimina esa parte del texto para dejar solo las observaciones reales
+          cleanedObservations = cleanedObservations.replace(match[0], "").trim()
+        }
+
+        // Si la tabla ya tiene un campo "rooms" (jsonb)
+        const parsedRooms =
+          typeof r.rooms === "string" && r.rooms.startsWith("[")
+            ? JSON.parse(r.rooms)
+            : Array.isArray(r.rooms)
+            ? r.rooms
+            : extractedRooms
+
+        return {
+          ...r,
+          rooms: parsedRooms,
+          observations: cleanedObservations || null,
+        }
+      })
+
+      setRecords(formatted)
+    } catch (error) {
+      console.error("Error fetching fumigation records:", error)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
   }
 
-  async function handleSave() {
-    if (!fumigationDate || !responsible) {
-      alert("Por favor completa la fecha y el responsable.");
-      return;
-    }
-
-    const payload = {
-      hotel,
-      date: fumigationDate,          // YYYY-MM-DD
-      operator_name: responsible,    // coincide con la columna
-      observations: observations || "",
-    };
-
-    try {
-      const res = await fetch("/api/fumigation", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        const err = await safeJson(res);
-        console.error("❌ Error POST /api/fumigation:", err);
-        alert("Error al registrar la fumigación");
-        return;
-      }
-
-      // Limpia el form y recarga
-      setFumigationDate("");
-      setResponsible("");
-      setObservations("");
-      await fetchRecords();
-      alert("Registro guardado con éxito");
-    } catch (err) {
-      console.error("💥 Error inesperado guardando fumigación:", err);
-      alert("Error al registrar la fumigación");
-    }
+  const handlePrint = () => {
+    window.print()
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4" />
-          <p className="text-slate-600">Cargando historial...</p>
-        </div>
-      </div>
-    );
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString("es-ES", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    })
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-      {/* Header */}
-      <header className="bg-white border-b border-slate-200 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center gap-4">
-            <Link href={`/${hotel}/preventivo`}>
-              <Button variant="ghost" size="icon">
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-            </Link>
-            <div>
-              <h1 className="text-2xl font-bold text-slate-900">
-                Historial de Fumigaciones
-              </h1>
-              <p className="text-sm text-slate-600">{hotelName}</p>
-            </div>
+    <div className="container mx-auto p-6 max-w-7xl">
+      <div className="flex items-center justify-between mb-6 print:mb-4">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={() => router.back()} className="print:hidden">
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold flex items-center gap-2">
+              <Bug className="h-6 w-6 text-purple-600" />
+              Historial de Fumigaciones
+            </h1>
+            <p className="text-muted-foreground">
+              Hotel {hotel.charAt(0).toUpperCase() + hotel.slice(1)}
+            </p>
           </div>
         </div>
-      </header>
+        <Button onClick={handlePrint} className="print:hidden">
+          <Printer className="h-4 w-4 mr-2" />
+          Imprimir
+        </Button>
+      </div>
 
-      {/* Main */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-        {/* Formulario simple */}
-        <Card className="p-6">
-          <h2 className="text-lg font-semibold mb-4 text-slate-800">
-            Registrar nueva fumigación
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="text-sm text-slate-600 mb-1 block">
-                Fecha de fumigación
-              </label>
-              <Input
-                type="date"
-                value={fumigationDate}
-                onChange={(e) => setFumigationDate(e.target.value)}
-              />
+      <Card>
+        <CardHeader>
+          <CardTitle>Registros de Fumigación</CardTitle>
+          <CardDescription>
+            Historial completo de fumigaciones realizadas en el hotel
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="text-center py-8 text-muted-foreground">Cargando registros...</div>
+          ) : records.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              No hay registros de fumigación
             </div>
-            <div>
-              <label className="text-sm text-slate-600 mb-1 block">
-                Responsable
-              </label>
-              <Input
-                value={responsible}
-                onChange={(e) => setResponsible(e.target.value)}
-                placeholder="Nombre del operario"
-              />
-            </div>
-            <div>
-              <label className="text-sm text-slate-600 mb-1 block">
-                Observaciones
-              </label>
-              <Input
-                value={observations}
-                onChange={(e) => setObservations(e.target.value)}
-                placeholder="Comentarios opcionales"
-              />
-            </div>
-          </div>
-          <div className="mt-4">
-            <Button onClick={handleSave}>Guardar</Button>
-          </div>
-        </Card>
-
-        {/* Buscador */}
-        <Card className="p-6">
-          <div className="flex items-center gap-4">
-            <Search className="h-5 w-5 text-slate-400" />
-            <Input
-              placeholder="Buscar por responsable u observaciones…"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="flex-1"
-            />
-          </div>
-        </Card>
-
-        <p className="text-sm text-slate-600">
-          Mostrando {filteredRecords.length} de {records.length} registros
-        </p>
-
-        {/* Lista */}
-        {filteredRecords.length === 0 ? (
-          <Card className="p-12 text-center">
-            <div className="text-6xl mb-4">🪳</div>
-            <h3 className="text-xl font-bold text-slate-900 mb-2">
-              No hay registros
-            </h3>
-            <p className="text-slate-600">
-              {searchTerm
-                ? "No se encontraron registros con ese criterio de búsqueda"
-                : "Aún no hay fumigaciones registradas"}
-            </p>
-          </Card>
-        ) : (
-          <div className="space-y-4">
-            {filteredRecords.map((r) => (
-              <Card key={r.id} className="p-6 hover:shadow-md transition-shadow">
-                <div className="flex items-start gap-3">
-                  <div className="text-3xl">🪳</div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Calendar className="h-4 w-4 text-slate-500" />
-                      <span className="font-bold text-slate-900">
-                        {r.date
-                          ? new Date(r.date).toLocaleDateString("es-ES", {
-                              day: "2-digit",
-                              month: "long",
-                              year: "numeric",
-                            })
-                          : "—"}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <User className="h-4 w-4 text-slate-500" />
-                      <span className="text-sm text-slate-700">
-                        {r.operator_name || "Sin responsable"}
-                      </span>
-                    </div>
-
-                    {r.observations && r.observations.trim() !== "" && (
-                      <div className="mt-3 p-3 bg-slate-50 rounded-lg border">
-                        <div className="flex items-start gap-2">
-                          <FileText className="h-4 w-4 text-slate-500 mt-0.5" />
-                          <div>
-                            <p className="text-xs font-medium text-slate-600 mb-1">
-                              Observaciones:
-                            </p>
-                            <p className="text-sm text-slate-700">
-                              {r.observations}
-                            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Fecha</TableHead>
+                    <TableHead>Operario</TableHead>
+                    <TableHead>Habitaciones Fumigadas</TableHead>
+                    <TableHead>Observaciones</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {records.map((record) => (
+                    <TableRow key={record.id}>
+                      <TableCell className="whitespace-nowrap">
+                        {formatDate(record.date)}
+                      </TableCell>
+                      <TableCell>{record.operator_name || "—"}</TableCell>
+                      <TableCell>
+                        {record.rooms && record.rooms.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {record.rooms.map((room, index) => (
+                              <span
+                                key={index}
+                                className="inline-flex items-center px-2 py-1 rounded-md bg-purple-100 text-purple-800 text-xs font-medium"
+                              >
+                                {room}
+                              </span>
+                            ))}
                           </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </Card>
-            ))}
-          </div>
-        )}
-      </main>
-    </div>
-  );
-}
+                        ) : (
+                          <span className="text-slate-400 italic">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="max-w-xs">
+                        {record.observations && record.observations.trim() !== ""
+                          ? record.observations
+                          : "—"}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-/** Intenta parsear JSON sin romper si respuesta vacía */
-async function safeJson(res: Response) {
-  try {
-    return await res.json();
-  } catch {
-    return null;
-  }
+      <style jsx global>{`
+        @media print {
+          @page {
+            size: landscape;
+            margin: 1cm;
+          }
+          body {
+            print-color-adjust: exact;
+            -webkit-print-color-adjust: exact;
+          }
+          .print\\:hidden {
+            display: none !important;
+          }
+        }
+      `}</style>
+    </div>
+  )
 }
