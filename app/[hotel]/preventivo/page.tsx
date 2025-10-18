@@ -137,6 +137,11 @@ export default function PreventiveMaintenance() {
         setLoadingUpcoming(true)
         const res = await fetch(`/api/preventive-maintenance/upcoming?hotel=${hotel}`)
         const data = await res.json()
+        console.log("[v0] Calendar tasks received:", data.tasks?.length || 0)
+        console.log(
+          "[v0] Sample tasks:",
+          data.tasks?.slice(0, 3).map((t: any) => ({ type: t.type, date: t.date, rooms: t.rooms?.length || 0 })),
+        )
         setUpcomingTasks(data.tasks || [])
       } catch (err) {
         console.error("Error cargando calendario:", err)
@@ -647,6 +652,13 @@ export default function PreventiveMaintenance() {
                       }).map((day) => {
                         const dayISO = day.toISOString().split("T")[0]
                         const dayTasks = filteredUpcomingTasks.filter((t) => t.date === dayISO)
+
+                        if (day.getDate() <= 3) {
+                          console.log(
+                            `[v0] Day ${dayISO}: ${dayTasks.length} tasks`,
+                            dayTasks.map((t) => t.type),
+                          )
+                        }
 
                         return (
                           <div

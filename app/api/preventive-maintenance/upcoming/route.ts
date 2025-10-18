@@ -118,6 +118,11 @@ export async function GET(request: NextRequest) {
     upcomingTasks.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
 
     console.log("[v0] Upcoming tasks fetched:", upcomingTasks.length)
+    console.log(
+      "[v0] Sample task dates:",
+      upcomingTasks.slice(0, 3).map((t) => ({ type: t.type, date: t.date, rooms: t.rooms?.length || 0 })),
+    )
+
     return NextResponse.json({ tasks: upcomingTasks })
   } catch (error) {
     console.error("[v0] Error fetching upcoming tasks:", error)
