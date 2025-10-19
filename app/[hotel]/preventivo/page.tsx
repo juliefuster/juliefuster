@@ -80,7 +80,6 @@ const rooms =
   ROOM_NUMBERS["caledonian"] // fallback temporal
 
 
-
   useEffect(() => {
     const fetchCalendarTasks = async () => {
       try {
@@ -139,7 +138,11 @@ const rooms =
     { id: 7, name: "Revisión luces de emergencia", frequency: "Mensual", icon: Lightbulb, status: "upcoming" },
     { id: 8, name: "Limpieza bajante S1", frequency: "Mensual", icon: Droplets, status: "upcoming" },
     { id: 9, name: "Limpieza pozo S2", frequency: "Mensual", icon: Droplets, status: "upcoming" },
-    {
+    // 🆕 Nuevas tareas mensuales
+  { id: 19, name: "Claraboya", frequency: "Mensual", icon: Wrench, status: "upcoming" },
+  { id: 20, name: "Tubo bombero", frequency: "Mensual", icon: Wrench, status: "upcoming" },
+  { id: 21, name: "Desagües", frequency: "Mensual", icon: Droplets, status: "upcoming" },
+  {
       id: 10,
       name: "Mover llaves de paso de todo el hotel",
       frequency: "Cada 2 meses",

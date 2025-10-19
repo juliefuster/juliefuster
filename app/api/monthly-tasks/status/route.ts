@@ -20,11 +20,14 @@ export async function GET(request: NextRequest) {
       { id: 7, name: "💡 Revisión luces de emergencia" },
       { id: 8, name: "⬇️ Limpieza bajante S1" },
       { id: 9, name: "💧 Limpieza pozo S2" },
+      { id: 19, name: "🌤️ Claraboya" },
+      { id: 20, name: "🚒 Tubo bombero" },
+      { id: 21, name: "🌀 Desagües" },
     ]
 
-    // 🔹 Consultamos las tareas registradas de ese hotel
+    // 🔹 Consultamos las tareas registradas en Supabase
     const { data, error } = await supabase
-      .from("monthly_tasks") // asegúrate de tener esta tabla creada
+      .from("monthly_tasks") // asegúrate que existe
       .select("name, status")
       .eq("hotel", hotel)
 
