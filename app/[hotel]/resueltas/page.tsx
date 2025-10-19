@@ -81,117 +81,109 @@ export default function ResolvedIssuesPage() {
   })
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {/* Header (visible solo en pantalla) */}
+    <div className="min-h-screen bg-slate-50 text-[13px]">
+      {/* Header */}
       <header className="bg-white border-b border-slate-200 shadow-sm print:hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex items-center justify-between">
-          <div className="flex items-center gap-4">
+        <div className="max-w-7xl mx-auto px-3 sm:px-5 lg:px-8 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
             <Link href={`/${hotel}`}>
               <Button variant="ghost" size="icon">
-                <ArrowLeft className="h-5 w-5" />
+                <ArrowLeft className="h-4 w-4" />
               </Button>
             </Link>
             <div>
-              <h1 className="text-2xl font-bold text-slate-900">Averías Resueltas</h1>
-              <p className="text-sm text-slate-600">{hotelName}</p>
+              <h1 className="text-xl font-semibold text-slate-900">Averías Resueltas</h1>
+              <p className="text-xs text-slate-600">{hotelName}</p>
             </div>
           </div>
-          <Button onClick={handlePrint} variant="outline" className="bg-transparent">
-            <Printer className="h-4 w-4 mr-2" />
+          <Button onClick={handlePrint} variant="outline" className="bg-transparent text-xs">
+            <Printer className="h-3 w-3 mr-1" />
             Imprimir
           </Button>
         </div>
       </header>
 
-      {/* Encabezado de impresión (solo visible al imprimir) */}
-      <div className="hidden print:block text-center mb-6">
-        <h1 className="text-2xl font-bold text-slate-900 mb-1">Averías Resueltas</h1>
-        <p className="text-sm text-slate-700">
+      {/* Encabezado impresión */}
+      <div className="hidden print:block text-center mb-4">
+        <h1 className="text-xl font-bold text-slate-900 mb-1">Averías Resueltas</h1>
+        <p className="text-xs text-slate-700">
           {hotelName} — {currentDate}
         </p>
       </div>
 
       {/* Search Bar */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-6 print:hidden">
+      <main className="max-w-7xl mx-auto px-3 sm:px-5 lg:px-8 py-4">
+        <div className="mb-4 print:hidden">
           <Input
             placeholder="🔍 Buscar por título, ubicación o descripción..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="max-w-3xl mx-auto"
+            className="text-xs max-w-2xl mx-auto h-8"
           />
         </div>
 
         {loading ? (
-          <p className="text-center text-slate-500">Cargando averías resueltas...</p>
+          <p className="text-center text-slate-500 text-sm">Cargando averías resueltas...</p>
         ) : filteredIssues.length === 0 ? (
-          <Card className="p-8 text-center">
+          <Card className="p-6 text-center text-sm">
             <p className="text-slate-600">No hay averías resueltas registradas.</p>
           </Card>
         ) : (
           <div className="overflow-x-auto bg-white rounded-lg shadow print:shadow-none">
-            <table className="w-full border-collapse">
-              <thead className="bg-slate-100 border-b border-slate-200">
+            <table className="w-full border-collapse text-[11.5px]">
+              <thead className="bg-slate-100 border-b border-slate-200 text-[11px]">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Estado</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Título</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Descripción</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Ubicación</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Reportado por</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Resuelto por</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">
-                    Reparación Realizada
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Fecha creación</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">
-                    Fecha resolución
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Tiempo</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">
-                    Materiales / Repuestos
-                  </th>
+                  <th className="px-2 py-1.5 text-left font-semibold text-slate-700 uppercase">Estado</th>
+                  <th className="px-2 py-1.5 text-left font-semibold text-slate-700 uppercase">Título</th>
+                  <th className="px-2 py-1.5 text-left font-semibold text-slate-700 uppercase">Descripción</th>
+                  <th className="px-2 py-1.5 text-left font-semibold text-slate-700 uppercase">Ubicación</th>
+                  <th className="px-2 py-1.5 text-left font-semibold text-slate-700 uppercase">Reportado</th>
+                  <th className="px-2 py-1.5 text-left font-semibold text-slate-700 uppercase">Resuelto por</th>
+                  <th className="px-2 py-1.5 text-left font-semibold text-slate-700 uppercase">Reparación</th>
+                  <th className="px-2 py-1.5 text-left font-semibold text-slate-700 uppercase">Creación</th>
+                  <th className="px-2 py-1.5 text-left font-semibold text-slate-700 uppercase">Resolución</th>
+                  <th className="px-2 py-1.5 text-left font-semibold text-slate-700 uppercase">Tiempo</th>
+                  <th className="px-2 py-1.5 text-left font-semibold text-slate-700 uppercase">Materiales</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
                 {filteredIssues.map((issue) => (
                   <tr key={issue.id} className="hover:bg-slate-50">
-                    <td className="px-4 py-3">
-                      <Badge className="bg-green-100 text-green-700">RESUELTA</Badge>
+                    <td className="px-2 py-1.5">
+                      <Badge className="bg-green-100 text-green-700 text-[10px]">RESUELTA</Badge>
                     </td>
-                    <td className="px-4 py-3 font-medium text-slate-900">{issue.title}</td>
-                    <td className="px-4 py-3 text-xs text-slate-700 whitespace-normal">
+                    <td className="px-2 py-1.5 text-[11px] font-medium text-slate-900">{issue.title}</td>
+                    <td className="px-2 py-1.5 text-[10.5px] text-slate-700 whitespace-normal">
                       {issue.description || <span className="italic text-slate-400">Sin descripción</span>}
                     </td>
-                    <td className="px-4 py-3 text-slate-600">{issue.location}</td>
-                    <td className="px-4 py-3 text-slate-600">{issue.reported_by}</td>
-                    <td className="px-4 py-3 text-slate-600">{issue.resolution_responsible || "—"}</td>
-                    <td className="px-4 py-3 text-xs text-slate-700 whitespace-normal">
+                    <td className="px-2 py-1.5 text-[10.5px] text-slate-600">{issue.location}</td>
+                    <td className="px-2 py-1.5 text-[10.5px] text-slate-600">{issue.reported_by}</td>
+                    <td className="px-2 py-1.5 text-[10.5px] text-slate-600">{issue.resolution_responsible || "—"}</td>
+                    <td className="px-2 py-1.5 text-[10.5px] text-slate-700 whitespace-normal">
                       {issue.resolution_notes || <span className="italic text-slate-400">Sin notas</span>}
                     </td>
-                    <td className="px-4 py-3 text-slate-600">
+                    <td className="px-2 py-1.5 text-[10.5px] text-slate-600">
                       {new Date(issue.created_at).toLocaleDateString("es-ES")}
                     </td>
-                    <td className="px-4 py-3 text-slate-600">
+                    <td className="px-2 py-1.5 text-[10.5px] text-slate-600">
                       {issue.resolved_at ? new Date(issue.resolved_at).toLocaleDateString("es-ES") : "—"}
                     </td>
-                    <td className="px-4 py-3 text-slate-600">
+                    <td className="px-2 py-1.5 text-[10.5px] text-slate-600">
                       {issue.created_at && issue.resolved_at
                         ? getTimeDifference(issue.created_at, issue.resolved_at)
                         : "—"}
                     </td>
-
-                    {/* 🧱 Materiales usados */}
-                    <td className="px-4 py-3 text-slate-600">
+                    <td className="px-2 py-1.5 text-[10.5px] text-slate-600">
                       {issue.materials_used ? (
-                        <ul className="list-disc list-inside text-sm text-slate-700">
+                        <ul className="list-disc list-inside text-[10.5px] text-slate-700">
                           {JSON.parse(issue.materials_used).map((m: any, i: number) => (
                             <li key={i}>
-                              {m.name} — <span className="text-slate-500">{m.quantity} ud.</span>
+                              {m.name} <span className="text-slate-500">({m.quantity} ud.)</span>
                             </li>
                           ))}
                         </ul>
                       ) : (
-                        <span className="italic text-slate-400">Sin materiales usados</span>
+                        <span className="italic text-slate-400">Sin materiales</span>
                       )}
                     </td>
                   </tr>
@@ -202,60 +194,36 @@ export default function ResolvedIssuesPage() {
         )}
       </main>
 
-      {/* 🖨️ Estilos para impresión */}
+      {/* Estilos impresión */}
       <style jsx global>{`
         @media print {
           @page {
-            size: A4 landscape;
-            margin: 10mm;
+            size: landscape;
+            margin: 8mm;
           }
-
           body {
-            font-size: 11px !important;
+            font-size: 10px !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
-
           table {
             width: 100% !important;
             border-collapse: collapse !important;
           }
-
           th,
           td {
-            padding: 6px 8px !important;
-            font-size: 10.5px !important;
+            padding: 4px 6px !important;
+            font-size: 9.5px !important;
             border: 1px solid #d1d5db !important;
             vertical-align: top !important;
           }
-
           th {
             background: #f1f5f9 !important;
             color: #111827 !important;
           }
-
-          table,
-          tr,
-          td,
-          th {
-            page-break-inside: avoid !important;
-          }
-
-          .shadow,
-          .print\\:shadow-none {
-            box-shadow: none !important;
-          }
-
-          .print\\:hidden,
           button,
-          input,
-          select {
+          input {
             display: none !important;
-          }
-
-          main {
-            padding: 0 !important;
-            margin: 0 !important;
           }
         }
       `}</style>
