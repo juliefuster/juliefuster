@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
 
     const { data: fumigations, error: fumError } = await supabase
       .from("fumigation_records")
-      .select("id, date, next_date, operator_name, observations")
+      .select("id, date, next_date, operator_name, rooms")
       .eq("hotel", hotel)
       .not("next_date", "is", null)
       .order("next_date", { ascending: true })
@@ -54,18 +54,15 @@ export async function GET(request: NextRequest) {
       fumigations.forEach((fum) => {
         let rooms = []
         try {
-          if (fum.observations && typeof fum.observations === "string") {
-            // Extract rooms from format: "Habitaciones fumigadas: 101, 102, 103"
-            const match = fum.observations.match(/Habitaciones fumigadas:\s*([0-9,\s]+)/)
-            if (match && match[1]) {
-              rooms = match[1]
-                .split(",")
-                .map((r) => r.trim())
-                .filter((r) => r)
-            }
+          if (fum.rooms && typeof fum.rooms === "string") {
+            // Parse comma-separated room numbers
+            rooms = fum.rooms
+              .split(",")
+              .map((r) => r.trim())
+              .filter((r) => r)
           }
         } catch (e) {
-          console.error("[v0] Error parsing fumigation observations:", e)
+          console.error("[v0] Error parsing fumigation rooms:", e)
         }
 
         upcomingTasks.push({

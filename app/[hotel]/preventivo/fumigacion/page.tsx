@@ -6,16 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import {
-  ArrowLeft,
-  Printer,
-  Eye,
-  Bug,
-  Search,
-  CheckCircle2,
-  AlertTriangle,
-  Filter,
-} from "lucide-react"
+import { ArrowLeft, Printer, Eye, Bug, Search, CheckCircle2, AlertTriangle, Filter } from "lucide-react"
 
 interface FumigationRecord {
   id: string
@@ -61,7 +52,7 @@ export default function FumigationHistoryPage() {
       (r) =>
         r.operator_name?.toLowerCase().includes(term) ||
         (r.observations ?? "").toLowerCase().includes(term) ||
-        r.rooms?.some((room) => room.toLowerCase().includes(term))
+        r.rooms?.some((room) => room.toLowerCase().includes(term)),
     )
     setFilteredRecords(filtered)
   }, [searchTerm, records])
@@ -74,12 +65,22 @@ export default function FumigationHistoryPage() {
 
       const data = await response.json()
       const formatted = data.map((r: any) => {
-        const parsedRooms =
-          typeof r.rooms === "string" && r.rooms.startsWith("[")
-            ? JSON.parse(r.rooms)
-            : Array.isArray(r.rooms)
-            ? r.rooms
-            : []
+        let parsedRooms: string[] = []
+
+        if (r.rooms) {
+          // Try to parse as JSON array first
+          try {
+            const parsed = JSON.parse(r.rooms)
+            parsedRooms = Array.isArray(parsed) ? parsed : [r.rooms]
+          } catch {
+            // If not JSON, treat as comma-separated string
+            parsedRooms = r.rooms
+              .split(",")
+              .map((room: string) => room.trim())
+              .filter(Boolean)
+          }
+        }
+
         return {
           id: r.id,
           hotel: r.hotel,
@@ -110,9 +111,7 @@ export default function FumigationHistoryPage() {
 
       rooms.forEach((room) => {
         if (!roomMap[room] || new Date(record.date) > new Date(roomMap[room].next_date || 0)) {
-          const diffDays = next
-            ? Math.ceil((next.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-            : 0
+          const diffDays = next ? Math.ceil((next.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : 0
           const status = diffDays >= 0 ? "fumigada" : "pendiente"
           roomMap[room] = {
             room,
@@ -138,9 +137,7 @@ export default function FumigationHistoryPage() {
       minute: "2-digit",
     })
 
-  const filteredRooms = showOnlyPending
-    ? roomStatus.filter((r) => r.status === "pendiente")
-    : roomStatus
+  const filteredRooms = showOnlyPending ? roomStatus.filter((r) => r.status === "pendiente") : roomStatus
 
   const totalFumigated = roomStatus.filter((r) => r.status === "fumigada").length
   const totalPending = roomStatus.filter((r) => r.status === "pendiente").length
@@ -158,9 +155,7 @@ export default function FumigationHistoryPage() {
               <Bug className="h-6 w-6 text-purple-600" />
               Historial de Fumigaciones
             </h1>
-            <p className="text-muted-foreground">
-              Hotel {hotel.charAt(0).toUpperCase() + hotel.slice(1)}
-            </p>
+            <p className="text-muted-foreground">Hotel {hotel.charAt(0).toUpperCase() + hotel.slice(1)}</p>
           </div>
         </div>
 
@@ -211,9 +206,7 @@ export default function FumigationHistoryPage() {
             {loading ? (
               <div className="text-center py-8 text-muted-foreground">Cargando registros...</div>
             ) : filteredRecords.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                No se encontraron registros
-              </div>
+              <div className="text-center py-8 text-muted-foreground">No se encontraron registros</div>
             ) : (
               <div className="overflow-x-auto">
                 <Table>
@@ -258,32 +251,24 @@ export default function FumigationHistoryPage() {
         <Card>
           <CardHeader>
             <CardTitle>Estado de Fumigaciones por Habitación</CardTitle>
-            <CardDescription>
-              Visualiza qué habitaciones están fumigadas o pendientes
-            </CardDescription>
+            <CardDescription>Visualiza qué habitaciones están fumigadas o pendientes</CardDescription>
           </CardHeader>
           <CardContent>
             {/* 🔸 Resumen arriba */}
             <div className="flex flex-wrap items-center justify-center gap-6 mb-6">
               <div className="flex items-center gap-2 text-green-700 bg-green-50 border border-green-200 px-4 py-2 rounded-lg shadow-sm">
                 <CheckCircle2 className="h-5 w-5 text-green-600" />
-                <span className="text-sm font-medium">
-                  {totalFumigated} habitaciones fumigadas
-                </span>
+                <span className="text-sm font-medium">{totalFumigated} habitaciones fumigadas</span>
               </div>
               <div className="flex items-center gap-2 text-red-700 bg-red-50 border border-red-200 px-4 py-2 rounded-lg shadow-sm">
                 <AlertTriangle className="h-5 w-5 text-red-600" />
-                <span className="text-sm font-medium">
-                  {totalPending} habitaciones pendientes
-                </span>
+                <span className="text-sm font-medium">{totalPending} habitaciones pendientes</span>
               </div>
             </div>
 
             {filteredRooms.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                {showOnlyPending
-                  ? "No hay habitaciones pendientes 😎"
-                  : "No hay datos de fumigación"}
+                {showOnlyPending ? "No hay habitaciones pendientes 😎" : "No hay datos de fumigación"}
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -300,10 +285,7 @@ export default function FumigationHistoryPage() {
                     {filteredRooms.map((room) => {
                       const totalCycle = 90
                       const days = Math.min(room.days, totalCycle)
-                      const percentage =
-                        room.status === "fumigada"
-                          ? ((totalCycle - days) / totalCycle) * 100
-                          : 100
+                      const percentage = room.status === "fumigada" ? ((totalCycle - days) / totalCycle) * 100 : 100
 
                       return (
                         <TableRow key={room.room}>
@@ -332,15 +314,10 @@ export default function FumigationHistoryPage() {
                               <div className="w-full h-2 rounded-full bg-slate-200 overflow-hidden">
                                 <div
                                   className={`h-full transition-all duration-500 ${
-                                    room.status === "fumigada"
-                                      ? "bg-green-500"
-                                      : "bg-red-500"
+                                    room.status === "fumigada" ? "bg-green-500" : "bg-red-500"
                                   }`}
                                   style={{
-                                    width:
-                                      room.status === "fumigada"
-                                        ? `${100 - percentage}%`
-                                        : "100%",
+                                    width: room.status === "fumigada" ? `${100 - percentage}%` : "100%",
                                   }}
                                 />
                               </div>
@@ -348,16 +325,12 @@ export default function FumigationHistoryPage() {
                                 {room.status === "fumigada" ? (
                                   <>
                                     <span>🪳 Próx. en</span>
-                                    <span className="font-semibold text-green-700">
-                                      {room.days} días
-                                    </span>
+                                    <span className="font-semibold text-green-700">{room.days} días</span>
                                   </>
                                 ) : (
                                   <>
                                     <span>⚠️ Retraso</span>
-                                    <span className="font-semibold text-red-700">
-                                      {room.days} días
-                                    </span>
+                                    <span className="font-semibold text-red-700">{room.days} días</span>
                                   </>
                                 )}
                               </div>

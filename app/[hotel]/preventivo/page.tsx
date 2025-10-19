@@ -267,9 +267,6 @@ export default function PreventiveMaintenance() {
     }
 
     try {
-      const roomsList = `Habitaciones fumigadas: ${selectedRooms.join(", ")}`
-      const fullObservations = observations.trim() ? `${roomsList}\n\n${observations.trim()}` : roomsList
-
       const response = await fetch("/api/fumigation", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -277,7 +274,8 @@ export default function PreventiveMaintenance() {
           hotel,
           date: fumigationDate,
           operator_name: operatorName.trim(),
-          observations: fullObservations,
+          rooms: selectedRooms.join(", "), // Send as comma-separated string
+          observations: observations.trim() || null, // Only user observations
         }),
       })
 
@@ -717,8 +715,10 @@ export default function PreventiveMaintenance() {
                     <Wrench className="h-5 w-5 text-orange-600" />
                     Historial de Tareas Mensuales
                   </CardTitle>
-                  <CardDescription>Limpieza marquesina, Limpieza sala de máquinas, Revisión luces de emergencia, Limpieza bajante S1, Limpieza pozo S2, Claraboya, Tubo bombero, Desagües
-</CardDescription>
+                  <CardDescription>
+                    Limpieza marquesina, Limpieza sala de máquinas, Revisión luces de emergencia, Limpieza bajante S1,
+                    Limpieza pozo S2, Claraboya, Tubo bombero, Desagües
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <Link href={`/${hotel}/preventivo/tareas-mensuales`}>

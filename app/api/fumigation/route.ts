@@ -37,10 +37,10 @@ export async function POST(request: Request) {
   try {
     const body = await request.json()
 
-    // Extraemos y normalizamos campos del cuerpo
     const hotel = body.hotel
     const dateInput = body.date ?? body.fecha ?? body.fechaFumigacion
     const operatorName = body.operatorName ?? body.operator_name ?? body.responsable
+    const rooms = body.rooms ?? "" // Rooms as comma-separated string
     const observations = body.observations ?? body.comentarios ?? ""
 
     // Validar campos obligatorios
@@ -55,8 +55,11 @@ export async function POST(request: Request) {
       hotel,
       date: formatDate(dateInput),
       operator_name: operatorName,
+      rooms, // Store rooms in separate column
       observations,
     }
+
+    console.log("[v0] Fumigation payload:", payload)
 
     const supabase = createClient()
 
