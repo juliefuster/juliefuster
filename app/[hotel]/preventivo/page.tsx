@@ -9,7 +9,6 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { eachDayOfInterval, startOfMonth, endOfMonth } from "date-fns"
 import { Checkbox } from "@/components/ui/checkbox"
 import Link from "next/link"
 import { useParams } from "next/navigation"
@@ -514,140 +513,149 @@ export default function PreventiveMaintenance() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
-                  <CardTitle>Calendario de Tareas de Mantenimiento</CardTitle>
-                  <CardDescription>Vista mensual con las próximas tareas programadas</CardDescription>
+                  <CardTitle>Próximas Tareas de Mantenimiento</CardTitle>
+                  <CardDescription>Tareas programadas para los próximos 7 días</CardDescription>
                 </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={async () => {
+                    setLoadingUpcoming(true)
+                    try {
+                      const res = await fetch(`/api/preventive-maintenance/upcoming?hotel=${hotel}`)
+                      const data = await res.json()
+                      setUpcomingTasks(data.tasks || [])
+                    } catch (err) {
+                      console.error("Error refreshing tasks:", err)
+                    } finally {
+                      setLoadingUpcoming(false)
+                    }
+                  }}
+                  disabled={loadingUpcoming}
+                >
+                  {loadingUpcoming ? "Actualizando..." : "Actualizar"}
+                </Button>
               </CardHeader>
 
               <CardContent>
-                {/* 🔹 Estado del calendario */}
                 {loadingUpcoming ? (
                   <div className="text-center py-12 text-slate-500">
-                    <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>Cargando calendario...</p>
+                    <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50 animate-pulse" />
+                    <p>Cargando tareas...</p>
                   </div>
                 ) : (
-                  <div className="space-y-6">
-                    <div className="flex items-center gap-4">
-                      <div className="flex-1 max-w-sm">
-                        <Label htmlFor="room-search" className="text-sm font-medium mb-2 block">
-                          Buscar por habitación
-                        </Label>
-                        <Input
-                          id="room-search"
-                          type="text"
-                          placeholder="Ej: 101, 202..."
-                          value={roomSearchQuery}
-                          onChange={(e) => setRoomSearchQuery(e.target.value)}
-                          className="w-full"
-                        />
-                        {roomSearchQuery && (
-                          <p className="text-xs text-slate-600 mt-1">
-                            Mostrando {filteredUpcomingTasks.length} de {upcomingTasks.length} tareas
-                          </p>
-                        )}
-                      </div>
-                      {roomSearchQuery && (
-                        <Button variant="outline" size="sm" onClick={() => setRoomSearchQuery("")} className="mt-6">
-                          Limpiar filtro
-                        </Button>
-                      )}
-                    </div>
+                  (() => {
+                    // Filter tasks for next 7 days
+                    const today = new Date()
+                    today.setHours(0, 0, 0, 0)
+                    const sevenDaysFromNow = new Date(today)
+                    sevenDaysFromNow.setDate(today.getDate() + 7)
 
-                    {/* 🔹 Navegación de meses */}
-                    <div className="flex items-center justify-between">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))
-                        }
-                      >
-                        ← Mes anterior
-                      </Button>
+                    const weeklyTasks = upcomingTasks
+                      .map((task) => {
+                        const taskDate = new Date(task.date)
+                        const daysUntil = Math.ceil((taskDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+                        return { ...task, daysUntil, taskDate }
+                      })
+                      .filter((task) => task.taskDate <= sevenDaysFromNow)
+                      .sort((a, b) => a.taskDate.getTime() - b.taskDate.getTime())
 
-                      <h2 className="text-lg font-semibold text-slate-800 capitalize">
-                        {currentMonth.toLocaleString("es-ES", { month: "long", year: "numeric" })}
-                      </h2>
+                    return weeklyTasks.length > 0 ? (
+                      <div className="space-y-3">
+                        {weeklyTasks.map((task, i) => {
+                          const isOverdue = task.daysUntil < 0
+                          const isToday = task.daysUntil === 0
 
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))
-                        }
-                      >
-                        Mes siguiente →
-                      </Button>
-                    </div>
+                          return (
+                            <Card
+                              key={i}
+                              className={`border-l-4 ${
+                                isOverdue
+                                  ? "border-l-red-500 bg-red-50"
+                                  : isToday
+                                    ? "border-l-orange-500 bg-orange-50"
+                                    : "border-l-blue-500 bg-blue-50"
+                              }`}
+                            >
+                              <CardContent className="p-4">
+                                <div className="flex items-start justify-between gap-4">
+                                  <div className="flex-1 space-y-2">
+                                    <div className="flex items-center gap-2">
+                                      <h3 className="font-semibold text-slate-900">{task.type}</h3>
+                                      <Badge
+                                        variant="outline"
+                                        className={
+                                          isOverdue
+                                            ? "bg-red-100 text-red-800 border-red-300"
+                                            : isToday
+                                              ? "bg-orange-100 text-orange-800 border-orange-300"
+                                              : "bg-blue-100 text-blue-800 border-blue-300"
+                                        }
+                                      >
+                                        {isOverdue
+                                          ? `${Math.abs(task.daysUntil)} días de retraso`
+                                          : isToday
+                                            ? "Hoy"
+                                            : `En ${task.daysUntil} días`}
+                                      </Badge>
+                                    </div>
 
-                    {/* 🔹 Cabecera de días */}
-                    <div className="grid grid-cols-7 gap-2 text-center text-xs font-medium text-slate-600">
-                      {["L", "M", "X", "J", "V", "S", "D"].map((d) => (
-                        <div key={d} className="py-1 uppercase">
-                          {d}
-                        </div>
-                      ))}
-                    </div>
+                                    <div className="text-sm text-slate-600 space-y-1">
+                                      <p>
+                                        <strong>Fecha programada:</strong> {task.taskDate.toLocaleDateString("es-ES")}
+                                      </p>
+                                      {task.frequency && (
+                                        <p>
+                                          <strong>Frecuencia:</strong> {task.frequency}
+                                        </p>
+                                      )}
+                                      {task.lastCompleted && (
+                                        <p>
+                                          <strong>Última vez:</strong>{" "}
+                                          {new Date(task.lastCompleted).toLocaleDateString("es-ES")}
+                                        </p>
+                                      )}
+                                      {task.operator && (
+                                        <p>
+                                          <strong>Último operario:</strong> {task.operator}
+                                        </p>
+                                      )}
+                                    </div>
 
-                    {/* 🔹 Celdas del calendario */}
-                    <div className="grid grid-cols-7 gap-2">
-                      {eachDayOfInterval({
-                        start: startOfMonth(currentMonth),
-                        end: endOfMonth(currentMonth),
-                      }).map((day) => {
-                        const dayISO = day.toISOString().split("T")[0]
-                        const dayTasks = filteredUpcomingTasks.filter((t) => t.date === dayISO)
-
-                        if (day.getDate() <= 3) {
-                          console.log(
-                            `[v0] Day ${dayISO}: ${dayTasks.length} tasks`,
-                            dayTasks.map((t) => t.type),
-                          )
-                        }
-
-                        return (
-                          <div
-                            key={dayISO}
-                            className="border rounded-md p-2 min-h-[90px] bg-white hover:bg-slate-50 transition-all"
-                          >
-                            <div className="text-xs font-semibold text-slate-700 mb-1">{day.getDate()}</div>
-
-                            {dayTasks.length > 0 ? (
-                              <div className="space-y-1">
-                                {dayTasks.map((task: any, i: number) => (
-                                  <div
-                                    key={i}
-                                    className={`text-[10px] px-1 py-0.5 rounded-md truncate cursor-pointer hover:shadow-md hover:scale-105 transition-all ${
-                                      task.type.includes("bomba")
-                                        ? "bg-blue-100 text-blue-800 hover:bg-blue-200"
-                                        : task.type.includes("filtro")
-                                          ? "bg-green-100 text-green-800 hover:bg-green-200"
-                                          : "bg-purple-100 text-purple-800 hover:bg-purple-200"
-                                    }`}
-                                    title={`${task.type}${task.rooms?.length ? ` - ${task.rooms.length} habitaciones` : ""}`}
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      setSelectedDay(dayISO)
-                                      setSelectedDayTasks(dayTasks)
-                                      setDayDialogOpen(true)
-                                    }}
-                                  >
-                                    {task.type}
-                                    {task.rooms?.length > 0 && (
-                                      <span className="ml-1 font-semibold">({task.rooms.length})</span>
+                                    {task.rooms && task.rooms.length > 0 && (
+                                      <div className="mt-2">
+                                        <p className="text-sm font-medium text-slate-700 mb-1">
+                                          {task.type.includes("filtro") ? "Filtros a limpiar:" : "Habitaciones:"}
+                                        </p>
+                                        <div className="flex flex-wrap gap-1">
+                                          {task.rooms.slice(0, 10).map((room: string, idx: number) => (
+                                            <Badge key={idx} variant="secondary" className="text-xs">
+                                              {room}
+                                            </Badge>
+                                          ))}
+                                          {task.rooms.length > 10 && (
+                                            <Badge variant="secondary" className="text-xs">
+                                              +{task.rooms.length - 10} más
+                                            </Badge>
+                                          )}
+                                        </div>
+                                      </div>
                                     )}
                                   </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <div className="text-[9px] text-slate-300">—</div>
-                            )}
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          )
+                        })}
+                      </div>
+                    ) : (
+                      <div className="text-center py-12 text-slate-500">
+                        <CheckCircle2 className="h-12 w-12 mx-auto mb-4 opacity-50 text-green-500" />
+                        <p className="font-medium">No hay tareas programadas para los próximos 7 días</p>
+                        <p className="text-sm mt-2">Todas las tareas están al día</p>
+                      </div>
+                    )
+                  })()
                 )}
               </CardContent>
             </Card>

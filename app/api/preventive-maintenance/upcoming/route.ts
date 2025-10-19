@@ -11,17 +11,27 @@ export async function GET(request: NextRequest) {
     }
 
     const supabase = await createClient()
+    const now = new Date()
+    const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
 
     const { data: fumigations, error: fumError } = await supabase
       .from("fumigation_records")
       .select("id, date, next_date, operator_name, rooms")
       .eq("hotel", hotel)
-      .not("next_date", "is", null)
-      .order("next_date", { ascending: true })
-      .limit(10)
+      .order("date", { ascending: false })
 
     if (fumError) {
       console.error("[v0] Error fetching fumigations:", fumError)
+    }
+
+    const { data: filterCleanings, error: filterError } = await supabase
+      .from("filter_cleaning_records")
+      .select("id, created_at, next_date, operator_name, observations, cleaned_filters")
+      .eq("hotel", hotel)
+      .order("created_at", { ascending: false })
+
+    if (filterError) {
+      console.error("[v0] Error fetching filter cleanings:", filterError)
     }
 
     const { data: pumpChanges, error: pumpError } = await supabase
@@ -36,26 +46,16 @@ export async function GET(request: NextRequest) {
       console.error("[v0] Error fetching pump changes:", pumpError)
     }
 
-    const { data: filterCleanings, error: filterError } = await supabase
-      .from("filter_cleaning_records")
-      .select("id, created_at, next_date, operator_name, observations, cleaned_filters")
-      .eq("hotel", hotel)
-      .not("next_date", "is", null)
-      .order("next_date", { ascending: true })
-      .limit(10)
-
-    if (filterError) {
-      console.error("[v0] Error fetching filter cleanings:", filterError)
-    }
-
     const upcomingTasks = []
 
     if (fumigations && fumigations.length > 0) {
+      const roomLastFumigation: Record<string, { date: Date; operator: string }> = {}
+
+      // Find the last fumigation date for each room
       fumigations.forEach((fum) => {
-        let rooms = []
+        let rooms: string[] = []
         try {
           if (fum.rooms && typeof fum.rooms === "string") {
-            // Parse comma-separated room numbers
             rooms = fum.rooms
               .split(",")
               .map((r) => r.trim())
@@ -65,33 +65,42 @@ export async function GET(request: NextRequest) {
           console.error("[v0] Error parsing fumigation rooms:", e)
         }
 
-        upcomingTasks.push({
-          type: "Fumigación de chinches",
-          date: fum.next_date,
-          lastCompleted: fum.date,
-          operator: fum.operator_name,
-          frequency: "Trimestral",
-          rooms: rooms,
+        const fumDate = new Date(fum.date)
+        rooms.forEach((room) => {
+          if (!roomLastFumigation[room] || fumDate > roomLastFumigation[room].date) {
+            roomLastFumigation[room] = {
+              date: fumDate,
+              operator: fum.operator_name,
+            }
+          }
         })
       })
-    }
 
-    if (pumpChanges && pumpChanges.length > 0) {
-      pumpChanges.forEach((pump) => {
-        upcomingTasks.push({
-          type: "Cambio de bombas",
-          date: pump.next_date,
-          lastCompleted: pump.date,
-          operator: pump.operator_name,
-          frequency: "Semanal",
-          pumpNumber: pump.pump_number,
-        })
+      // Calculate next fumigation date for each room (90 days after last fumigation)
+      Object.entries(roomLastFumigation).forEach(([room, info]) => {
+        const nextDate = new Date(info.date.getTime() + 90 * 24 * 60 * 60 * 1000)
+        const diffDays = Math.ceil((nextDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+
+        // Include if overdue OR within next 7 days
+        if (diffDays <= 7) {
+          upcomingTasks.push({
+            type: "Fumigación de chinches",
+            date: nextDate.toISOString().split("T")[0],
+            lastCompleted: info.date.toISOString().split("T")[0],
+            operator: info.operator,
+            frequency: "Trimestral (90 días)",
+            rooms: [room],
+          })
+        }
       })
     }
 
     if (filterCleanings && filterCleanings.length > 0) {
+      const filterLastCleaning: Record<string, { date: Date; operator: string }> = {}
+
+      // Find the last cleaning date for each filter/room
       filterCleanings.forEach((filter) => {
-        let cleanedFilters = []
+        let cleanedFilters: string[] = []
         try {
           if (filter.cleaned_filters) {
             cleanedFilters = Array.isArray(filter.cleaned_filters) ? filter.cleaned_filters : []
@@ -100,14 +109,51 @@ export async function GET(request: NextRequest) {
           console.error("[v0] Error parsing cleaned filters:", e)
         }
 
-        upcomingTasks.push({
-          type: "Limpieza filtros de aire",
-          date: filter.next_date,
-          lastCompleted: filter.created_at?.split("T")[0],
-          operator: filter.operator_name,
-          frequency: "Quincenal",
-          rooms: cleanedFilters,
+        const cleaningDate = new Date(filter.created_at)
+        cleanedFilters.forEach((room) => {
+          if (!filterLastCleaning[room] || cleaningDate > filterLastCleaning[room].date) {
+            filterLastCleaning[room] = {
+              date: cleaningDate,
+              operator: filter.operator_name,
+            }
+          }
         })
+      })
+
+      // Calculate next cleaning date for each filter (15 days after last cleaning for biweekly)
+      Object.entries(filterLastCleaning).forEach(([room, info]) => {
+        const nextDate = new Date(info.date.getTime() + 15 * 24 * 60 * 60 * 1000)
+        const diffDays = Math.ceil((nextDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+
+        // Include if overdue OR within next 7 days
+        if (diffDays <= 7) {
+          upcomingTasks.push({
+            type: "Limpieza filtros de aire",
+            date: nextDate.toISOString().split("T")[0],
+            lastCompleted: info.date.toISOString().split("T")[0],
+            operator: info.operator,
+            frequency: "Quincenal (15 días)",
+            rooms: [room],
+          })
+        }
+      })
+    }
+
+    if (pumpChanges && pumpChanges.length > 0) {
+      pumpChanges.forEach((pump) => {
+        const pumpDate = new Date(pump.next_date)
+        const diffDays = Math.ceil((pumpDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+
+        if (diffDays <= 7) {
+          upcomingTasks.push({
+            type: "Cambio de bombas",
+            date: pump.next_date,
+            lastCompleted: pump.date,
+            operator: pump.operator_name,
+            frequency: "Semanal",
+            pumpNumber: pump.pump_number,
+          })
+        }
       })
     }
 

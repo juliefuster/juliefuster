@@ -164,9 +164,9 @@ export default function PendingIssues() {
   })
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-      {/* Header (pantalla) */}
-      <header className="bg-white border-b border-slate-200 shadow-sm print:hidden">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 relative z-0">
+      {/* Header */}
+      <header className="bg-white border-b border-slate-200 shadow-sm print:hidden relative z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex justify-between items-center">
           <div className="flex items-center gap-4">
             <Link href={`/${hotel}`} className="print:hidden">
@@ -186,18 +186,9 @@ export default function PendingIssues() {
         </div>
       </header>
 
-      {/* Encabezado solo para impresión */}
-      <div className="hidden print:block text-center mb-6">
-        <h1 className="text-2xl font-bold text-slate-900 mb-1">Averías Pendientes</h1>
-        <p className="text-sm text-slate-700">
-          {hotelName} — {currentDate}
-        </p>
-      </div>
-
-      {/* Contenido */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6 relative z-0">
         {/* 🔍 Search bar */}
-        <div className="flex items-center gap-3 bg-white p-4 rounded-lg shadow-sm border print:hidden">
+        <div className="flex items-center gap-3 bg-white p-4 rounded-lg shadow-sm border print:hidden relative z-10">
           <Search className="h-5 w-5 text-slate-500" />
           <Input
             placeholder="Buscar por título, ubicación, categoría o responsable..."
@@ -212,6 +203,7 @@ export default function PendingIssues() {
           )}
         </div>
 
+        {/* Tabla de averías */}
         {loading ? (
           <div className="text-center py-12 text-slate-600">Cargando averías...</div>
         ) : filteredIssues.length === 0 ? (
@@ -221,7 +213,7 @@ export default function PendingIssues() {
             <p className="text-slate-600">Todas las averías han sido resueltas 🎉</p>
           </Card>
         ) : (
-          <div className="bg-white rounded-lg shadow overflow-x-auto print:shadow-none">
+          <div className="relative z-0 bg-white rounded-lg shadow overflow-x-auto print:shadow-none">
             <table className="w-full">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
@@ -278,8 +270,90 @@ export default function PendingIssues() {
         )}
       </main>
 
-      {/* Diálogo de resolución (igual que antes) */}
-      {/* ... sin cambios ... */}
+      {/* ✅ Diálogo completo y corregido */}
+      <Dialog open={!!resolvingIssue} onOpenChange={() => setResolvingIssue(null)}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto relative z-50">
+          <DialogHeader>
+            <DialogTitle>Marcar Avería como Resuelta</DialogTitle>
+            <DialogDescription>
+              Completa la información sobre la resolución de la avería: {resolvingIssue?.title}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Fecha de Finalización *</Label>
+              <Input
+                type="date"
+                value={resolveForm.resolvedAt}
+                onChange={(e) => setResolveForm({ ...resolveForm, resolvedAt: e.target.value })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Responsable *</Label>
+              <Input
+                placeholder="Nombre del técnico o responsable"
+                value={resolveForm.responsible}
+                onChange={(e) => setResolveForm({ ...resolveForm, responsible: e.target.value })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>¿Qué se hizo para reparar? *</Label>
+              <Textarea
+                placeholder="Describe las acciones realizadas para resolver la avería..."
+                rows={4}
+                value={resolveForm.notes}
+                onChange={(e) => setResolveForm({ ...resolveForm, notes: e.target.value })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Materiales Utilizados (opcional)</Label>
+                <Button type="button" variant="outline" size="sm" onClick={addMaterial}>
+                  <Plus className="h-4 w-4 mr-1" />
+                  Añadir Material
+                </Button>
+              </div>
+              {materials.map((m, i) => (
+                <div key={i} className="flex gap-2 items-end">
+                  <Input
+                    placeholder="Nombre del material"
+                    value={m.name}
+                    onChange={(e) => updateMaterial(i, "name", e.target.value)}
+                    className="flex-1"
+                  />
+                  <Input
+                    type="number"
+                    min="1"
+                    placeholder="Cant."
+                    value={m.quantity}
+                    onChange={(e) => updateMaterial(i, "quantity", Number(e.target.value))}
+                    className="w-24"
+                  />
+                  {materials.length > 1 && (
+                    <Button type="button" variant="ghost" size="icon" onClick={() => removeMaterial(i)}>
+                      <Trash2 className="h-4 w-4 text-red-500" />
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setResolvingIssue(null)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSaveResolve} className="bg-green-600 hover:bg-green-700">
+              <CheckCircle className="h-4 w-4 mr-2" />
+              Marcar como Resuelta
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
