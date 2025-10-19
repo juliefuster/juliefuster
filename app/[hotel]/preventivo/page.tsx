@@ -11,7 +11,6 @@ import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { eachDayOfInterval, startOfMonth, endOfMonth } from "date-fns"
 import { Checkbox } from "@/components/ui/checkbox"
-import { ROOM_NUMBERS } from "@/lib/rooms"
 import Link from "next/link"
 import { useParams } from "next/navigation"
 import {
@@ -31,6 +30,9 @@ import {
   Printer,
   History,
 } from "lucide-react"
+
+import { ROOM_NUMBERS } from "@/lib/rooms"   // ⬅️ ESTA LÍNEA AQUÍ ARRIBA, NO ABAJO
+
 
 interface Task {
   id: number
