@@ -5,7 +5,14 @@ import { useParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { ArrowLeft, Printer, Eye, CheckCircle2, AlertTriangle } from "lucide-react"
+import {
+  ArrowLeft,
+  Printer,
+  Eye,
+  CheckCircle2,
+  AlertTriangle,
+  Filter,
+} from "lucide-react"
 
 interface FilterCleaningRecord {
   id: string
@@ -28,10 +35,12 @@ export default function FilterCleaningHistoryPage() {
   const params = useParams()
   const router = useRouter()
   const hotel = params.hotel as string
+
   const [records, setRecords] = useState<FilterCleaningRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [showStatusView, setShowStatusView] = useState(false)
   const [roomStatus, setRoomStatus] = useState<RoomStatus[]>([])
+  const [showOnlyDirty, setShowOnlyDirty] = useState(false)
 
   useEffect(() => {
     fetchRecords()
@@ -42,7 +51,6 @@ export default function FilterCleaningHistoryPage() {
       setLoading(true)
       const response = await fetch(`/api/filter-cleaning?hotel=${hotel}`)
       if (!response.ok) throw new Error("Failed to fetch records")
-
       const data = await response.json()
       setRecords(data)
       calculateRoomStatus(data)
@@ -57,14 +65,15 @@ export default function FilterCleaningHistoryPage() {
     const now = new Date()
     const roomMap: Record<string, RoomStatus> = {}
 
-    // Recorre todos los registros de limpieza
     records.forEach((record) => {
       const cleaned = record.cleaned_filters || []
       const next = record.next_date ? new Date(record.next_date) : null
 
       cleaned.forEach((room) => {
         if (!roomMap[room] || new Date(record.created_at) > new Date(roomMap[room].next_date || 0)) {
-          const diffDays = next ? Math.ceil((next.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : 0
+          const diffDays = next
+            ? Math.ceil((next.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+            : 0
           const status = diffDays >= 0 ? "limpia" : "sucia"
           roomMap[room] = {
             room,
@@ -81,18 +90,25 @@ export default function FilterCleaningHistoryPage() {
 
   const handlePrint = () => window.print()
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("es-ES", {
+  const formatDate = (dateString: string) =>
+    new Date(dateString).toLocaleDateString("es-ES", {
       year: "numeric",
       month: "long",
       day: "numeric",
       hour: "2-digit",
       minute: "2-digit",
     })
-  }
+
+  const filteredRooms = showOnlyDirty
+    ? roomStatus.filter((r) => r.status === "sucia")
+    : roomStatus
+
+  const totalClean = roomStatus.filter((r) => r.status === "limpia").length
+  const totalDirty = roomStatus.filter((r) => r.status === "sucia").length
 
   return (
     <div className="container mx-auto p-6 max-w-7xl">
+      {/* HEADER */}
       <div className="flex items-center justify-between mb-6 print:mb-4">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={() => router.back()} className="print:hidden">
@@ -111,6 +127,15 @@ export default function FilterCleaningHistoryPage() {
             <Eye className="h-4 w-4 mr-2" />
             {showStatusView ? "Ver Historial" : "Vista rápida"}
           </Button>
+          {showStatusView && (
+            <Button
+              variant={showOnlyDirty ? "default" : "outline"}
+              onClick={() => setShowOnlyDirty(!showOnlyDirty)}
+            >
+              <Filter className="h-4 w-4 mr-2" />
+              {showOnlyDirty ? "Ver todas" : "Ver solo sucias"}
+            </Button>
+          )}
           <Button onClick={handlePrint}>
             <Printer className="h-4 w-4 mr-2" />
             Imprimir
@@ -118,7 +143,7 @@ export default function FilterCleaningHistoryPage() {
         </div>
       </div>
 
-      {/* 🔹 VISTA NORMAL (Historial de limpiezas) */}
+      {/* 🔹 HISTORIAL NORMAL */}
       {!showStatusView && (
         <Card>
           <CardHeader>
@@ -187,9 +212,27 @@ export default function FilterCleaningHistoryPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {roomStatus.length === 0 ? (
+            {/* 🔸 Resumen arriba */}
+            <div className="flex flex-wrap items-center justify-center gap-6 mb-6">
+              <div className="flex items-center gap-2 text-green-700 bg-green-50 border border-green-200 px-4 py-2 rounded-lg shadow-sm">
+                <CheckCircle2 className="h-5 w-5 text-green-600" />
+                <span className="text-sm font-medium">
+                  {totalClean} habitaciones limpias
+                </span>
+              </div>
+              <div className="flex items-center gap-2 text-red-700 bg-red-50 border border-red-200 px-4 py-2 rounded-lg shadow-sm">
+                <AlertTriangle className="h-5 w-5 text-red-600" />
+                <span className="text-sm font-medium">
+                  {totalDirty} habitaciones sucias
+                </span>
+              </div>
+            </div>
+
+            {filteredRooms.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                No hay datos de estado de filtros
+                {showOnlyDirty
+                  ? "No hay habitaciones sucias actualmente 😎"
+                  : "No hay datos de estado de filtros"}
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -203,32 +246,79 @@ export default function FilterCleaningHistoryPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {roomStatus.map((room) => (
-                      <TableRow key={room.room}>
-                        <TableCell className="font-medium">{room.room}</TableCell>
-                        <TableCell>
-                          {room.status === "limpia" ? (
-                            <span className="flex items-center text-green-700 font-medium">
-                              <CheckCircle2 className="h-4 w-4 mr-1 text-green-600" /> Limpia
-                            </span>
-                          ) : (
-                            <span className="flex items-center text-red-700 font-medium">
-                              <AlertTriangle className="h-4 w-4 mr-1 text-red-600" /> Sucia
-                            </span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {room.next_date
-                            ? new Date(room.next_date).toLocaleDateString("es-ES")
-                            : "-"}
-                        </TableCell>
-                        <TableCell>
-                          {room.status === "limpia"
-                            ? `${room.days} días restantes`
-                            : `${room.days} días de retraso`}
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {filteredRooms.map((room) => {
+                      const totalCycle = 14
+                      const days = Math.min(room.days, totalCycle)
+                      const percentage =
+                        room.status === "limpia"
+                          ? ((totalCycle - days) / totalCycle) * 100
+                          : 100
+
+                      return (
+                        <TableRow key={room.room}>
+                          <TableCell className="font-medium">{room.room}</TableCell>
+
+                          {/* Estado */}
+                          <TableCell>
+                            {room.status === "limpia" ? (
+                              <span className="flex items-center text-green-700 font-medium">
+                                <CheckCircle2 className="h-4 w-4 mr-1 text-green-600" /> Limpia
+                              </span>
+                            ) : (
+                              <span className="flex items-center text-red-700 font-medium">
+                                <AlertTriangle className="h-4 w-4 mr-1 text-red-600" /> Sucia
+                              </span>
+                            )}
+                          </TableCell>
+
+                          {/* Próxima limpieza */}
+                          <TableCell>
+                            {room.next_date
+                              ? new Date(room.next_date).toLocaleDateString("es-ES", {
+                                  day: "2-digit",
+                                  month: "short",
+                                })
+                              : "-"}
+                          </TableCell>
+
+                          {/* Visualización de días */}
+                          <TableCell>
+                            <div className="flex flex-col gap-1">
+                              <div className="w-full h-2 rounded-full bg-slate-200 overflow-hidden">
+                                <div
+                                  className={`h-full transition-all duration-500 ${
+                                    room.status === "limpia" ? "bg-green-500" : "bg-red-500"
+                                  }`}
+                                  style={{
+                                    width:
+                                      room.status === "limpia"
+                                        ? `${100 - percentage}%`
+                                        : "100%",
+                                  }}
+                                />
+                              </div>
+                              <div className="text-xs text-slate-600 flex justify-between">
+                                {room.status === "limpia" ? (
+                                  <>
+                                    <span>🧼 Faltan</span>
+                                    <span className="font-semibold text-green-700">
+                                      {room.days} días
+                                    </span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <span>⚠️ Retraso</span>
+                                    <span className="font-semibold text-red-700">
+                                      {room.days} días
+                                    </span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
                   </TableBody>
                 </Table>
               </div>

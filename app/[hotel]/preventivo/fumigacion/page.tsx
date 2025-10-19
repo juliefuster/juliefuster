@@ -6,7 +6,16 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { ArrowLeft, Printer, Bug, Search } from "lucide-react"
+import {
+  ArrowLeft,
+  Printer,
+  Eye,
+  Bug,
+  Search,
+  CheckCircle2,
+  AlertTriangle,
+  Filter,
+} from "lucide-react"
 
 interface FumigationRecord {
   id: string
@@ -15,6 +24,14 @@ interface FumigationRecord {
   operator_name: string
   observations: string | null
   rooms: string[]
+  next_date?: string | null
+}
+
+interface RoomStatus {
+  room: string
+  status: "fumigada" | "pendiente"
+  days: number
+  next_date: string | null
 }
 
 export default function FumigationHistoryPage() {
@@ -26,6 +43,9 @@ export default function FumigationHistoryPage() {
   const [filteredRecords, setFilteredRecords] = useState<FumigationRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
+  const [showStatusView, setShowStatusView] = useState(false)
+  const [roomStatus, setRoomStatus] = useState<RoomStatus[]>([])
+  const [showOnlyPending, setShowOnlyPending] = useState(false)
 
   useEffect(() => {
     fetchRecords()
@@ -54,41 +74,57 @@ export default function FumigationHistoryPage() {
 
       const data = await response.json()
       const formatted = data.map((r: any) => {
-        let extractedRooms: string[] = []
-        let cleanedObservations = r.observations || ""
-
-        const match = cleanedObservations.match(/habitaciones\s+fumigadas:\s*([0-9,\s]+)/i)
-        if (match) {
-          extractedRooms = match[1]
-            .split(",")
-            .map((room: string) => room.trim())
-            .filter(Boolean)
-          cleanedObservations = cleanedObservations.replace(match[0], "").trim()
-        }
-
         const parsedRooms =
           typeof r.rooms === "string" && r.rooms.startsWith("[")
             ? JSON.parse(r.rooms)
             : Array.isArray(r.rooms)
             ? r.rooms
-            : extractedRooms
-
+            : []
         return {
           id: r.id,
           hotel: r.hotel,
           date: r.date,
           operator_name: r.operator_name,
-          observations: cleanedObservations || null,
-          rooms: parsedRooms || [],
+          observations: r.observations || null,
+          rooms: parsedRooms,
+          next_date: r.next_date || null,
         }
       })
       setRecords(formatted)
       setFilteredRecords(formatted)
+      calculateRoomStatus(formatted)
     } catch (error) {
       console.error("Error fetching fumigation records:", error)
     } finally {
       setLoading(false)
     }
+  }
+
+  const calculateRoomStatus = (records: FumigationRecord[]) => {
+    const now = new Date()
+    const roomMap: Record<string, RoomStatus> = {}
+
+    records.forEach((record) => {
+      const rooms = record.rooms || []
+      const next = record.next_date ? new Date(record.next_date) : null
+
+      rooms.forEach((room) => {
+        if (!roomMap[room] || new Date(record.date) > new Date(roomMap[room].next_date || 0)) {
+          const diffDays = next
+            ? Math.ceil((next.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+            : 0
+          const status = diffDays >= 0 ? "fumigada" : "pendiente"
+          roomMap[room] = {
+            room,
+            status,
+            days: Math.abs(diffDays),
+            next_date: record.next_date || null,
+          }
+        }
+      })
+    })
+
+    setRoomStatus(Object.values(roomMap).sort((a, b) => a.room.localeCompare(b.room)))
   }
 
   const handlePrint = () => window.print()
@@ -101,6 +137,13 @@ export default function FumigationHistoryPage() {
       hour: "2-digit",
       minute: "2-digit",
     })
+
+  const filteredRooms = showOnlyPending
+    ? roomStatus.filter((r) => r.status === "pendiente")
+    : roomStatus
+
+  const totalFumigated = roomStatus.filter((r) => r.status === "fumigada").length
+  const totalPending = roomStatus.filter((r) => r.status === "pendiente").length
 
   return (
     <div className="container mx-auto p-6 max-w-7xl">
@@ -120,101 +163,218 @@ export default function FumigationHistoryPage() {
             </p>
           </div>
         </div>
-        <Button onClick={handlePrint} className="print:hidden">
-          <Printer className="h-4 w-4 mr-2" />
-          Imprimir
-        </Button>
+
+        <div className="flex gap-2 print:hidden">
+          <Button variant="outline" onClick={() => setShowStatusView(!showStatusView)}>
+            <Eye className="h-4 w-4 mr-2" />
+            {showStatusView ? "Ver Historial" : "Vista rápida"}
+          </Button>
+          {showStatusView && (
+            <Button
+              variant={showOnlyPending ? "default" : "outline"}
+              onClick={() => setShowOnlyPending(!showOnlyPending)}
+            >
+              <Filter className="h-4 w-4 mr-2" />
+              {showOnlyPending ? "Ver todas" : "Ver solo pendientes"}
+            </Button>
+          )}
+          <Button onClick={handlePrint}>
+            <Printer className="h-4 w-4 mr-2" />
+            Imprimir
+          </Button>
+        </div>
       </div>
 
       {/* Buscador */}
-      <Card className="p-4 mb-6 print:hidden">
-        <div className="flex items-center gap-3">
-          <Search className="h-5 w-5 text-slate-500" />
-          <Input
-            placeholder="Buscar por operario, habitación u observación..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="flex-1"
-          />
-        </div>
-      </Card>
+      {!showStatusView && (
+        <Card className="p-4 mb-6 print:hidden">
+          <div className="flex items-center gap-3">
+            <Search className="h-5 w-5 text-slate-500" />
+            <Input
+              placeholder="Buscar por operario, habitación u observación..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="flex-1"
+            />
+          </div>
+        </Card>
+      )}
 
-      {/* Tabla */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Registros de Fumigación</CardTitle>
-          <CardDescription>
-            Historial completo de fumigaciones realizadas en el hotel
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="text-center py-8 text-muted-foreground">Cargando registros...</div>
-          ) : filteredRecords.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              No se encontraron registros
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Fecha</TableHead>
-                    <TableHead>Operario</TableHead>
-                    <TableHead>Habitaciones Fumigadas</TableHead>
-                    <TableHead>Observaciones</TableHead>
-                    <TableHead>Estado</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredRecords.map((record) => (
-                    <TableRow key={record.id}>
-                      <TableCell className="whitespace-nowrap">
-                        {formatDate(record.date)}
-                      </TableCell>
-                      <TableCell>{record.operator_name || "—"}</TableCell>
-                      <TableCell>
-                        {record.rooms && record.rooms.length > 0 ? (
+      {/* Tabla normal */}
+      {!showStatusView && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Registros de Fumigación</CardTitle>
+            <CardDescription>Historial completo de fumigaciones realizadas</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <div className="text-center py-8 text-muted-foreground">Cargando registros...</div>
+            ) : filteredRecords.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                No se encontraron registros
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Fecha</TableHead>
+                      <TableHead>Operario</TableHead>
+                      <TableHead>Habitaciones</TableHead>
+                      <TableHead>Observaciones</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredRecords.map((record) => (
+                      <TableRow key={record.id}>
+                        <TableCell>{formatDate(record.date)}</TableCell>
+                        <TableCell>{record.operator_name}</TableCell>
+                        <TableCell>
                           <div className="flex flex-wrap gap-1">
-                            {record.rooms.map((room, index) => (
+                            {record.rooms.map((r, i) => (
                               <span
-                                key={index}
+                                key={i}
                                 className="inline-flex items-center px-2 py-1 rounded-md bg-purple-100 text-purple-800 text-xs font-medium"
                               >
-                                {room}
+                                {r}
                               </span>
                             ))}
                           </div>
-                        ) : (
-                          <span className="text-slate-400 italic">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="max-w-xs">
-                        {record.observations && record.observations.trim() !== ""
-                          ? record.observations
-                          : "—"}
-                      </TableCell>
-                      <TableCell>
-                        {record.rooms && record.rooms.length > 0 ? (
-                          <span className="inline-flex items-center px-2 py-1 rounded-md bg-green-100 text-green-700 text-xs font-medium">
-                            Fumigada
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center px-2 py-1 rounded-md bg-red-100 text-red-700 text-xs font-medium">
-                            Pendiente
-                          </span>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                        </TableCell>
+                        <TableCell>{record.observations || "—"}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
-      {/* Estilo para impresión */}
+      {/* Vista rápida */}
+      {showStatusView && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Estado de Fumigaciones por Habitación</CardTitle>
+            <CardDescription>
+              Visualiza qué habitaciones están fumigadas o pendientes
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {/* 🔸 Resumen arriba */}
+            <div className="flex flex-wrap items-center justify-center gap-6 mb-6">
+              <div className="flex items-center gap-2 text-green-700 bg-green-50 border border-green-200 px-4 py-2 rounded-lg shadow-sm">
+                <CheckCircle2 className="h-5 w-5 text-green-600" />
+                <span className="text-sm font-medium">
+                  {totalFumigated} habitaciones fumigadas
+                </span>
+              </div>
+              <div className="flex items-center gap-2 text-red-700 bg-red-50 border border-red-200 px-4 py-2 rounded-lg shadow-sm">
+                <AlertTriangle className="h-5 w-5 text-red-600" />
+                <span className="text-sm font-medium">
+                  {totalPending} habitaciones pendientes
+                </span>
+              </div>
+            </div>
+
+            {filteredRooms.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                {showOnlyPending
+                  ? "No hay habitaciones pendientes 😎"
+                  : "No hay datos de fumigación"}
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Habitación</TableHead>
+                      <TableHead>Estado</TableHead>
+                      <TableHead>Próxima fumigación</TableHead>
+                      <TableHead>Días restantes / en retraso</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredRooms.map((room) => {
+                      const totalCycle = 90
+                      const days = Math.min(room.days, totalCycle)
+                      const percentage =
+                        room.status === "fumigada"
+                          ? ((totalCycle - days) / totalCycle) * 100
+                          : 100
+
+                      return (
+                        <TableRow key={room.room}>
+                          <TableCell className="font-medium">{room.room}</TableCell>
+                          <TableCell>
+                            {room.status === "fumigada" ? (
+                              <span className="flex items-center text-green-700 font-medium">
+                                <CheckCircle2 className="h-4 w-4 mr-1 text-green-600" /> Fumigada
+                              </span>
+                            ) : (
+                              <span className="flex items-center text-red-700 font-medium">
+                                <AlertTriangle className="h-4 w-4 mr-1 text-red-600" /> Pendiente
+                              </span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {room.next_date
+                              ? new Date(room.next_date).toLocaleDateString("es-ES", {
+                                  day: "2-digit",
+                                  month: "short",
+                                })
+                              : "—"}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-col gap-1">
+                              <div className="w-full h-2 rounded-full bg-slate-200 overflow-hidden">
+                                <div
+                                  className={`h-full transition-all duration-500 ${
+                                    room.status === "fumigada"
+                                      ? "bg-green-500"
+                                      : "bg-red-500"
+                                  }`}
+                                  style={{
+                                    width:
+                                      room.status === "fumigada"
+                                        ? `${100 - percentage}%`
+                                        : "100%",
+                                  }}
+                                />
+                              </div>
+                              <div className="text-xs text-slate-600 flex justify-between">
+                                {room.status === "fumigada" ? (
+                                  <>
+                                    <span>🪳 Próx. en</span>
+                                    <span className="font-semibold text-green-700">
+                                      {room.days} días
+                                    </span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <span>⚠️ Retraso</span>
+                                    <span className="font-semibold text-red-700">
+                                      {room.days} días
+                                    </span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Estilo impresión */}
       <style jsx global>{`
         @media print {
           @page {
