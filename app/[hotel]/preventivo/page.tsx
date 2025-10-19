@@ -31,8 +31,7 @@ import {
   History,
 } from "lucide-react"
 
-import { ROOM_NUMBERS } from "@/lib/rooms"   // ⬅️ ESTA LÍNEA AQUÍ ARRIBA, NO ABAJO
-
+import { ROOM_NUMBERS } from "@/lib/rooms" // ⬅️ ESTA LÍNEA AQUÍ ARRIBA, NO ABAJO
 
 interface Task {
   id: number
@@ -58,10 +57,10 @@ export default function PreventiveMaintenance() {
   const [fumigationDialogOpen, setFumigationDialogOpen] = useState(false)
   const [filterCleaningDialogOpen, setFilterCleaningDialogOpen] = useState(false)
   // 🆕 Dialogo genérico para tareas mensuales
-const [genericTaskDialogOpen, setGenericTaskDialogOpen] = useState(false)
-const [selectedGenericTask, setSelectedGenericTask] = useState<Task | null>(null)
-const [genericOperator, setGenericOperator] = useState("")
-const [genericObservations, setGenericObservations] = useState("")
+  const [genericTaskDialogOpen, setGenericTaskDialogOpen] = useState(false)
+  const [selectedGenericTask, setSelectedGenericTask] = useState<Task | null>(null)
+  const [genericOperator, setGenericOperator] = useState("")
+  const [genericObservations, setGenericObservations] = useState("")
 
   const [selectedPump, setSelectedPump] = useState<1 | 2 | null>(null)
   const [operatorName, setOperatorName] = useState("")
@@ -80,11 +79,8 @@ const [genericObservations, setGenericObservations] = useState("")
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [roomSearchQuery, setRoomSearchQuery] = useState("")
 
-const normalizedHotel = typeof hotel === "string" ? hotel.toLowerCase().trim() : ""
-const rooms =
-  ROOM_NUMBERS[normalizedHotel as keyof typeof ROOM_NUMBERS] ??
-  ROOM_NUMBERS["caledonian"] // fallback temporal
-
+  const normalizedHotel = typeof hotel === "string" ? hotel.toLowerCase().trim() : ""
+  const rooms = ROOM_NUMBERS[normalizedHotel as keyof typeof ROOM_NUMBERS] ?? ROOM_NUMBERS["caledonian"] // fallback temporal
 
   useEffect(() => {
     const fetchCalendarTasks = async () => {
@@ -145,10 +141,10 @@ const rooms =
     { id: 8, name: "Limpieza bajante S1", frequency: "Mensual", icon: Droplets, status: "upcoming" },
     { id: 9, name: "Limpieza pozo S2", frequency: "Mensual", icon: Droplets, status: "upcoming" },
     // 🆕 Nuevas tareas mensuales
-  { id: 19, name: "Claraboya", frequency: "Mensual", icon: Wrench, status: "upcoming" },
-  { id: 20, name: "Tubo bombero", frequency: "Mensual", icon: Wrench, status: "upcoming" },
-  { id: 21, name: "Desagües", frequency: "Mensual", icon: Droplets, status: "upcoming" },
-  {
+    { id: 19, name: "Claraboya", frequency: "Mensual", icon: Wrench, status: "upcoming" },
+    { id: 20, name: "Tubo bombero", frequency: "Mensual", icon: Wrench, status: "upcoming" },
+    { id: 21, name: "Desagües", frequency: "Mensual", icon: Droplets, status: "upcoming" },
+    {
       id: 10,
       name: "Mover llaves de paso de todo el hotel",
       frequency: "Cada 2 meses",
@@ -368,23 +364,21 @@ const rooms =
     }
   }
 
-const handleCompleteTask = (taskId: number) => {
-  const task = tasks.find((t) => t.id === taskId)
-  if (!task) return
+  const handleCompleteTask = (taskId: number) => {
+    const task = tasks.find((t) => t.id === taskId)
+    if (!task) return
 
-  // Abrir los modales especiales
-  if (taskId === 1) return setPumpDialogOpen(true)
-  if (taskId === 11) return setFumigationDialogOpen(true)
-  if (taskId === 3) return setFilterCleaningDialogOpen(true)
+    // Abrir los modales especiales
+    if (taskId === 1) return setPumpDialogOpen(true)
+    if (taskId === 11) return setFumigationDialogOpen(true)
+    if (taskId === 3) return setFilterCleaningDialogOpen(true)
 
-  // 🆕 Para las tareas genéricas → abrimos el diálogo visual
-  setSelectedGenericTask(task)
-  setGenericOperator("")
-  setGenericObservations("")
-  setGenericTaskDialogOpen(true)
-}
-
-
+    // 🆕 Para las tareas genéricas → abrimos el diálogo visual
+    setSelectedGenericTask(task)
+    setGenericOperator("")
+    setGenericObservations("")
+    setGenericTaskDialogOpen(true)
+  }
 
   const handlePrint = () => {
     window.print()
@@ -716,6 +710,25 @@ const handleCompleteTask = (taskId: number) => {
                   </Link>
                 </CardContent>
               </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Wrench className="h-5 w-5 text-orange-600" />
+                    Historial de Tareas Mensuales
+                  </CardTitle>
+                  <CardDescription>Limpieza marquesina, Limpieza sala de máquinas, Revisión luces de emergencia, Limpieza bajante S1, Limpieza pozo S2, Claraboya, Tubo bombero, Desagües
+</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Link href={`/${hotel}/preventivo/tareas-mensuales`}>
+                    <Button className="w-full">
+                      <History className="h-4 w-4 mr-2" />
+                      Ver Historial
+                    </Button>
+                  </Link>
+                </CardContent>
+              </Card>
             </div>
           </TabsContent>
         </Tabs>
@@ -799,231 +812,198 @@ const handleCompleteTask = (taskId: number) => {
       </Dialog>
 
       {/* 🐞 Fumigation Dialog (mejorado con más espacio y estilo coherente) */}
-<Dialog open={fumigationDialogOpen} onOpenChange={setFumigationDialogOpen}>
-  <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-    <DialogHeader className="space-y-1">
-      <DialogTitle className="text-lg font-semibold">
-        Registrar Fumigación
-      </DialogTitle>
-      <DialogDescription className="text-slate-600">
-        Selecciona las habitaciones fumigadas e ingresa los detalles
-      </DialogDescription>
-    </DialogHeader>
+      <Dialog open={fumigationDialogOpen} onOpenChange={setFumigationDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader className="space-y-1">
+            <DialogTitle className="text-lg font-semibold">Registrar Fumigación</DialogTitle>
+            <DialogDescription className="text-slate-600">
+              Selecciona las habitaciones fumigadas e ingresa los detalles
+            </DialogDescription>
+          </DialogHeader>
 
-    {/* 🔹 Contenido con mejor separación visual */}
-    <div className="space-y-5 mt-3">
-      {/* Fecha */}
-      <div className="space-y-2">
-        <Label
-          htmlFor="fumigation-date"
-          className="font-medium text-sm text-slate-800"
-        >
-          Fecha de Fumigación *
-        </Label>
-        <Input
-          id="fumigation-date"
-          type="date"
-          value={fumigationDate}
-          onChange={(e) => setFumigationDate(e.target.value)}
-          className="w-full"
-        />
-      </div>
-
-      {/* Habitaciones */}
-      <div className="space-y-2">
-        <Label className="font-medium text-sm text-slate-800">
-          Habitaciones Fumigadas *
-        </Label>
-        <div className="grid grid-cols-6 gap-2 mt-2 max-h-56 overflow-y-auto p-3 border rounded-lg bg-slate-50">
-          {rooms.map((room) => (
-            <div key={room} className="flex items-center space-x-2">
-              <Checkbox
-                id={`room-${room}`}
-                checked={selectedRooms.includes(room)}
-                onCheckedChange={(checked) => {
-                  if (checked) {
-                    setSelectedRooms([...selectedRooms, room])
-                  } else {
-                    setSelectedRooms(selectedRooms.filter((r) => r !== room))
-                  }
-                }}
+          {/* 🔹 Contenido con mejor separación visual */}
+          <div className="space-y-5 mt-3">
+            {/* Fecha */}
+            <div className="space-y-2">
+              <Label htmlFor="fumigation-date" className="font-medium text-sm text-slate-800">
+                Fecha de Fumigación *
+              </Label>
+              <Input
+                id="fumigation-date"
+                type="date"
+                value={fumigationDate}
+                onChange={(e) => setFumigationDate(e.target.value)}
+                className="w-full"
               />
-              <label
-                htmlFor={`room-${room}`}
-                className="text-sm cursor-pointer leading-tight break-words text-slate-700"
-              >
-                {room}
-              </label>
             </div>
-          ))}
-        </div>
-        <p className="text-xs text-slate-600 mt-2">
-          Seleccionadas: {selectedRooms.length} habitaciones
-        </p>
-      </div>
 
-      {/* Responsable */}
-      <div className="space-y-2">
-        <Label
-          htmlFor="fumigation-operator"
-          className="font-medium text-sm text-slate-800"
-        >
-          Responsable *
-        </Label>
-        <Input
-          id="fumigation-operator"
-          value={operatorName}
-          onChange={(e) => setOperatorName(e.target.value)}
-          placeholder="Nombre del responsable o empresa"
-          className="w-full"
-        />
-      </div>
+            {/* Habitaciones */}
+            <div className="space-y-2">
+              <Label className="font-medium text-sm text-slate-800">Habitaciones Fumigadas *</Label>
+              <div className="grid grid-cols-6 gap-2 mt-2 max-h-56 overflow-y-auto p-3 border rounded-lg bg-slate-50">
+                {rooms.map((room) => (
+                  <div key={room} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`room-${room}`}
+                      checked={selectedRooms.includes(room)}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setSelectedRooms([...selectedRooms, room])
+                        } else {
+                          setSelectedRooms(selectedRooms.filter((r) => r !== room))
+                        }
+                      }}
+                    />
+                    <label
+                      htmlFor={`room-${room}`}
+                      className="text-sm cursor-pointer leading-tight break-words text-slate-700"
+                    >
+                      {room}
+                    </label>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-slate-600 mt-2">Seleccionadas: {selectedRooms.length} habitaciones</p>
+            </div>
 
-      {/* Observaciones */}
-      <div className="space-y-2">
-        <Label
-          htmlFor="fumigation-observations"
-          className="font-medium text-sm text-slate-800"
-        >
-          Observaciones
-        </Label>
-        <Textarea
-          id="fumigation-observations"
-          value={observations}
-          onChange={(e) => setObservations(e.target.value)}
-          placeholder="Producto utilizado, incidencias, etc."
-          rows={4}
-          className="resize-none"
-        />
-      </div>
-
-      {/* Botones */}
-      <div className="flex gap-2 pt-2">
-        <Button
-          variant="outline"
-          onClick={() => setFumigationDialogOpen(false)}
-          className="flex-1"
-        >
-          Cancelar
-        </Button>
-        <Button onClick={handleFumigationSubmit} className="flex-1">
-          Guardar
-        </Button>
-      </div>
-    </div>
-  </DialogContent>
-</Dialog>
-
-
-{/* 🧽 Filter Cleaning Dialog (mejorado con más espacio y legibilidad) */}
-<Dialog open={filterCleaningDialogOpen} onOpenChange={setFilterCleaningDialogOpen}>
-  <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-    <DialogHeader className="space-y-1">
-      <DialogTitle className="text-lg font-semibold">
-        Registrar Limpieza de Filtros
-      </DialogTitle>
-      <DialogDescription className="text-slate-600">
-        Selecciona los filtros limpiados e ingresa los detalles
-      </DialogDescription>
-    </DialogHeader>
-
-    {/* 🔹 Contenido con más espacio visual */}
-    <div className="space-y-5 mt-3">
-      {/* Fecha */}
-      <div className="space-y-2">
-        <Label
-          htmlFor="filter-cleaning-date"
-          className="font-medium text-sm text-slate-800"
-        >
-          Fecha de Limpieza *
-        </Label>
-        <Input
-          id="filter-cleaning-date"
-          type="date"
-          value={filterCleaningDate}
-          onChange={(e) => setFilterCleaningDate(e.target.value)}
-          className="w-full"
-        />
-      </div>
-
-      {/* Habitaciones / Filtros */}
-      <div className="space-y-2">
-        <Label className="font-medium text-sm text-slate-800">
-          Filtros Limpiados (Habitaciones) *
-        </Label>
-        <div className="grid grid-cols-6 gap-2 mt-2 max-h-56 overflow-y-auto p-3 border rounded-lg bg-slate-50">
-          {rooms.map((room) => (
-            <div key={room} className="flex items-center space-x-2">
-              <Checkbox
-                id={`room-${room}`}
-                checked={selectedFilters.includes(room)}
-                onCheckedChange={(checked) => {
-                  if (checked) {
-                    setSelectedFilters([...selectedFilters, room])
-                  } else {
-                    setSelectedFilters(selectedFilters.filter((r) => r !== room))
-                  }
-                }}
+            {/* Responsable */}
+            <div className="space-y-2">
+              <Label htmlFor="fumigation-operator" className="font-medium text-sm text-slate-800">
+                Responsable *
+              </Label>
+              <Input
+                id="fumigation-operator"
+                value={operatorName}
+                onChange={(e) => setOperatorName(e.target.value)}
+                placeholder="Nombre del responsable o empresa"
+                className="w-full"
               />
-              <label
-                htmlFor={`room-${room}`}
-                className="text-sm cursor-pointer leading-tight break-words text-slate-700"
-              >
-                {room}
-              </label>
             </div>
-          ))}
-        </div>
-        <p className="text-xs text-slate-600 mt-2">
-          Seleccionados: {selectedFilters.length} filtros
-        </p>
-      </div>
 
-      {/* Responsable */}
-      <div className="space-y-2">
-        <Label htmlFor="filter-operator" className="font-medium text-sm text-slate-800">
-          Responsable *
-        </Label>
-        <Input
-          id="filter-operator"
-          value={operatorName}
-          onChange={(e) => setOperatorName(e.target.value)}
-          placeholder="Nombre del responsable"
-          className="w-full"
-        />
-      </div>
+            {/* Observaciones */}
+            <div className="space-y-2">
+              <Label htmlFor="fumigation-observations" className="font-medium text-sm text-slate-800">
+                Observaciones
+              </Label>
+              <Textarea
+                id="fumigation-observations"
+                value={observations}
+                onChange={(e) => setObservations(e.target.value)}
+                placeholder="Producto utilizado, incidencias, etc."
+                rows={4}
+                className="resize-none"
+              />
+            </div>
 
-      {/* Observaciones */}
-      <div className="space-y-2">
-        <Label htmlFor="filter-observations" className="font-medium text-sm text-slate-800">
-          Observaciones
-        </Label>
-        <Textarea
-          id="filter-observations"
-          value={observations}
-          onChange={(e) => setObservations(e.target.value)}
-          placeholder="Estado de los filtros, incidencias, etc."
-          rows={4}
-          className="resize-none"
-        />
-      </div>
+            {/* Botones */}
+            <div className="flex gap-2 pt-2">
+              <Button variant="outline" onClick={() => setFumigationDialogOpen(false)} className="flex-1">
+                Cancelar
+              </Button>
+              <Button onClick={handleFumigationSubmit} className="flex-1">
+                Guardar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
-      {/* Botones */}
-      <div className="flex gap-2 pt-2">
-        <Button
-          variant="outline"
-          onClick={() => setFilterCleaningDialogOpen(false)}
-          className="flex-1"
-        >
-          Cancelar
-        </Button>
-        <Button onClick={handleFilterCleaningSubmit} className="flex-1">
-          Guardar
-        </Button>
-      </div>
-    </div>
-  </DialogContent>
-</Dialog>
+      {/* 🧽 Filter Cleaning Dialog (mejorado con más espacio y legibilidad) */}
+      <Dialog open={filterCleaningDialogOpen} onOpenChange={setFilterCleaningDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader className="space-y-1">
+            <DialogTitle className="text-lg font-semibold">Registrar Limpieza de Filtros</DialogTitle>
+            <DialogDescription className="text-slate-600">
+              Selecciona los filtros limpiados e ingresa los detalles
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* 🔹 Contenido con más espacio visual */}
+          <div className="space-y-5 mt-3">
+            {/* Fecha */}
+            <div className="space-y-2">
+              <Label htmlFor="filter-cleaning-date" className="font-medium text-sm text-slate-800">
+                Fecha de Limpieza *
+              </Label>
+              <Input
+                id="filter-cleaning-date"
+                type="date"
+                value={filterCleaningDate}
+                onChange={(e) => setFilterCleaningDate(e.target.value)}
+                className="w-full"
+              />
+            </div>
+
+            {/* Habitaciones / Filtros */}
+            <div className="space-y-2">
+              <Label className="font-medium text-sm text-slate-800">Filtros Limpiados (Habitaciones) *</Label>
+              <div className="grid grid-cols-6 gap-2 mt-2 max-h-56 overflow-y-auto p-3 border rounded-lg bg-slate-50">
+                {rooms.map((room) => (
+                  <div key={room} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`room-${room}`}
+                      checked={selectedFilters.includes(room)}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setSelectedFilters([...selectedFilters, room])
+                        } else {
+                          setSelectedFilters(selectedFilters.filter((r) => r !== room))
+                        }
+                      }}
+                    />
+                    <label
+                      htmlFor={`room-${room}`}
+                      className="text-sm cursor-pointer leading-tight break-words text-slate-700"
+                    >
+                      {room}
+                    </label>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-slate-600 mt-2">Seleccionados: {selectedFilters.length} filtros</p>
+            </div>
+
+            {/* Responsable */}
+            <div className="space-y-2">
+              <Label htmlFor="filter-operator" className="font-medium text-sm text-slate-800">
+                Responsable *
+              </Label>
+              <Input
+                id="filter-operator"
+                value={operatorName}
+                onChange={(e) => setOperatorName(e.target.value)}
+                placeholder="Nombre del responsable"
+                className="w-full"
+              />
+            </div>
+
+            {/* Observaciones */}
+            <div className="space-y-2">
+              <Label htmlFor="filter-observations" className="font-medium text-sm text-slate-800">
+                Observaciones
+              </Label>
+              <Textarea
+                id="filter-observations"
+                value={observations}
+                onChange={(e) => setObservations(e.target.value)}
+                placeholder="Estado de los filtros, incidencias, etc."
+                rows={4}
+                className="resize-none"
+              />
+            </div>
+
+            {/* Botones */}
+            <div className="flex gap-2 pt-2">
+              <Button variant="outline" onClick={() => setFilterCleaningDialogOpen(false)} className="flex-1">
+                Cancelar
+              </Button>
+              <Button onClick={handleFilterCleaningSubmit} className="flex-1">
+                Guardar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* 📅 Dialog de Detalle del Día */}
       <Dialog open={dayDialogOpen} onOpenChange={setDayDialogOpen}>
@@ -1082,105 +1062,99 @@ const handleCompleteTask = (taskId: number) => {
           )}
         </DialogContent>
       </Dialog>
-{/* 🆕 Generic Task Completion Dialog (mejorado con más espacio) */}
-<Dialog open={genericTaskDialogOpen} onOpenChange={setGenericTaskDialogOpen}>
-  <DialogContent className="max-w-md">
-    <DialogHeader className="space-y-1">
-      <DialogTitle className="text-lg font-semibold">
-        Registrar {selectedGenericTask?.name || "tarea"}
-      </DialogTitle>
-      <DialogDescription className="text-slate-600">
-        Ingresa el operario y observaciones opcionales
-      </DialogDescription>
-    </DialogHeader>
+      {/* 🆕 Generic Task Completion Dialog (mejorado con más espacio) */}
+      <Dialog open={genericTaskDialogOpen} onOpenChange={setGenericTaskDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader className="space-y-1">
+            <DialogTitle className="text-lg font-semibold">
+              Registrar {selectedGenericTask?.name || "tarea"}
+            </DialogTitle>
+            <DialogDescription className="text-slate-600">
+              Ingresa el operario y observaciones opcionales
+            </DialogDescription>
+          </DialogHeader>
 
-    {/* 🔹 Contenido con más espacio visual */}
-    <div className="space-y-5 mt-3">
-      <div className="space-y-2">
-        <Label htmlFor="generic-operator" className="font-medium text-sm text-slate-800">
-          Responsable *
-        </Label>
-        <Input
-          id="generic-operator"
-          value={genericOperator}
-          onChange={(e) => setGenericOperator(e.target.value)}
-          placeholder="Nombre del responsable"
-          className="w-full"
-        />
-      </div>
+          {/* 🔹 Contenido con más espacio visual */}
+          <div className="space-y-5 mt-3">
+            <div className="space-y-2">
+              <Label htmlFor="generic-operator" className="font-medium text-sm text-slate-800">
+                Responsable *
+              </Label>
+              <Input
+                id="generic-operator"
+                value={genericOperator}
+                onChange={(e) => setGenericOperator(e.target.value)}
+                placeholder="Nombre del responsable"
+                className="w-full"
+              />
+            </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="generic-observations" className="font-medium text-sm text-slate-800">
-          Observaciones
-        </Label>
-        <Textarea
-          id="generic-observations"
-          value={genericObservations}
-          onChange={(e) => setGenericObservations(e.target.value)}
-          placeholder="Detalles, incidencias, etc."
-          rows={4}
-          className="resize-none"
-        />
-      </div>
+            <div className="space-y-2">
+              <Label htmlFor="generic-observations" className="font-medium text-sm text-slate-800">
+                Observaciones
+              </Label>
+              <Textarea
+                id="generic-observations"
+                value={genericObservations}
+                onChange={(e) => setGenericObservations(e.target.value)}
+                placeholder="Detalles, incidencias, etc."
+                rows={4}
+                className="resize-none"
+              />
+            </div>
 
-      <div className="flex gap-2 pt-2">
-        <Button
-          variant="outline"
-          onClick={() => setGenericTaskDialogOpen(false)}
-          className="flex-1"
-        >
-          Cancelar
-        </Button>
-        <Button
-          className="flex-1"
-          onClick={async () => {
-            if (!genericOperator.trim()) {
-              alert("Debes introducir un nombre de operario")
-              return
-            }
+            <div className="flex gap-2 pt-2">
+              <Button variant="outline" onClick={() => setGenericTaskDialogOpen(false)} className="flex-1">
+                Cancelar
+              </Button>
+              <Button
+                className="flex-1"
+                onClick={async () => {
+                  if (!genericOperator.trim()) {
+                    alert("Debes introducir un nombre de operario")
+                    return
+                  }
 
-            try {
-              const response = await fetch("/api/monthly-tasks", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  hotel,
-                  taskId: selectedGenericTask?.id,
-                  taskName: selectedGenericTask?.name,
-                  operatorName: genericOperator.trim(),
-                  observations: genericObservations.trim() || null,
-                }),
-              })
+                  try {
+                    const response = await fetch("/api/monthly-tasks", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        hotel,
+                        taskId: selectedGenericTask?.id,
+                        taskName: selectedGenericTask?.name,
+                        operatorName: genericOperator.trim(),
+                        observations: genericObservations.trim() || null,
+                      }),
+                    })
 
-              if (!response.ok) throw new Error("Error al guardar")
+                    if (!response.ok) throw new Error("Error al guardar")
 
-              alert(`✅ ${selectedGenericTask?.name} registrada correctamente`)
-              setTasks((prev) =>
-                prev.map((t) =>
-                  t.id === selectedGenericTask?.id
-                    ? {
-                        ...t,
-                        status: "completed" as const,
-                        lastCompleted: new Date().toLocaleDateString(),
-                      }
-                    : t,
-                ),
-              )
-              setGenericTaskDialogOpen(false)
-            } catch (err) {
-              console.error("❌ Error:", err)
-              alert("Error al guardar en Supabase")
-            }
-          }}
-        >
-          Guardar
-        </Button>
-      </div>
-    </div>
-  </DialogContent>
-</Dialog>
-
-
+                    alert(`✅ ${selectedGenericTask?.name} registrada correctamente`)
+                    setTasks((prev) =>
+                      prev.map((t) =>
+                        t.id === selectedGenericTask?.id
+                          ? {
+                              ...t,
+                              status: "completed" as const,
+                              lastCompleted: new Date().toLocaleDateString(),
+                            }
+                          : t,
+                      ),
+                    )
+                    setGenericTaskDialogOpen(false)
+                  } catch (err) {
+                    console.error("❌ Error:", err)
+                    alert("Error al guardar en Supabase")
+                  }
+                }}
+              >
+                Guardar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <style jsx global>{`
         @media print {
