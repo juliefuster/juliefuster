@@ -74,8 +74,6 @@ export default function PreventiveMaintenance() {
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [roomSearchQuery, setRoomSearchQuery] = useState("")
 
-import { ROOM_NUMBERS } from "@/lib/rooms"
-
 const normalizedHotel = typeof hotel === "string" ? hotel.toLowerCase().trim() : ""
 const rooms =
   ROOM_NUMBERS[normalizedHotel as keyof typeof ROOM_NUMBERS] ??
