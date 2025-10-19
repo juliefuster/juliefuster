@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { eachDayOfInterval, startOfMonth, endOfMonth } from "date-fns"
 import { Checkbox } from "@/components/ui/checkbox"
+import { ROOM_NUMBERS } from "@/lib/rooms"
 import Link from "next/link"
 import { useParams } from "next/navigation"
 import {
@@ -71,65 +72,14 @@ export default function PreventiveMaintenance() {
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [roomSearchQuery, setRoomSearchQuery] = useState("")
 
-  const rooms = [
-    "101",
-    "102",
-    "103",
-    "104",
-    "105",
-    "106",
-    "107",
-    "108",
-    "202",
-    "203",
-    "204",
-    "205",
-    "206",
-    "207",
-    "208",
-    "209",
-    "210",
-    "212",
-    "214",
-    "215",
-    "216",
-    "301",
-    "302",
-    "303",
-    "304",
-    "305",
-    "306",
-    "307",
-    "308",
-    "401",
-    "402",
-    "403",
-    "404",
-    "405",
-    "406",
-    "407",
-    "408",
-    "501",
-    "502",
-    "503",
-    "504",
-    "505",
-    "506",
-    "507",
-    "508",
-    "601",
-    "602",
-    "603",
-    "604",
-    "605",
-    "606",
-    "607",
-    "608",
-    "609",
-    "610",
-    "611",
-    "612",
-  ]
+import { ROOM_NUMBERS } from "@/lib/rooms"
+
+const normalizedHotel = typeof hotel === "string" ? hotel.toLowerCase().trim() : ""
+const rooms =
+  ROOM_NUMBERS[normalizedHotel as keyof typeof ROOM_NUMBERS] ??
+  ROOM_NUMBERS["caledonian"] // fallback temporal
+
+
 
   useEffect(() => {
     const fetchCalendarTasks = async () => {
@@ -935,23 +885,29 @@ export default function PreventiveMaintenance() {
             </div>
             <div>
               <Label>Filtros Limpiados (Habitaciones) *</Label>
-              <div className="grid grid-cols-6 gap-2 mt-2 max-h-48 overflow-y-auto p-2 border rounded-lg">
+         <div className="grid grid-cols-6 gap-2 mt-2 max-h-48 overflow-y-auto p-2 border rounded-lg">
+
+
                 {rooms.map((room) => (
                   <div key={room} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`filter-${room}`}
-                      checked={selectedFilters.includes(room)}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          setSelectedFilters([...selectedFilters, room])
-                        } else {
-                          setSelectedFilters(selectedFilters.filter((r) => r !== room))
-                        }
-                      }}
+                <Checkbox
+          id={`room-${room}`}
+          checked={selectedRooms.includes(room)}
+          onCheckedChange={(checked) => {
+            if (checked) {
+              setSelectedRooms([...selectedRooms, room])
+            } else {
+              setSelectedRooms(selectedRooms.filter((r) => r !== room))
+            }
+          }}
                     />
-                    <label htmlFor={`filter-${room}`} className="text-sm cursor-pointer">
-                      {room}
-                    </label>
+                    <label
+  htmlFor={`room-${room}`}
+  className="text-sm cursor-pointer leading-tight break-words"
+>
+  {room}
+</label>
+
                   </div>
                 ))}
               </div>
