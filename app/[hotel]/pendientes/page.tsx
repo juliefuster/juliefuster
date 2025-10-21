@@ -41,7 +41,8 @@ export default function PendingIssues() {
   const params = useParams()
   const router = useRouter()
   const hotel = params.hotel as string
-  const hotelName = hotel === "caledonian" ? "Hotel Caledonian" : hotel === "chi" ? "Hotel Chi" : "Hotel Desconocido"
+  const hotelName =
+    hotel === "caledonian" ? "Hotel Caledonian" : hotel === "chi" ? "Hotel Chi" : "Hotel Desconocido"
 
   const supabase = createClient()
   const [issues, setIssues] = useState<Issue[]>([])
@@ -65,7 +66,6 @@ export default function PendingIssues() {
     fetchIssues()
   }, [hotel])
 
-  // 🔹 Cargar averías pendientes desde Supabase
   const fetchIssues = async () => {
     try {
       setLoading(true)
@@ -104,7 +104,6 @@ export default function PendingIssues() {
     setMaterials(updated)
   }
 
-  // ✅ Guardar avería resuelta con materiales usados
   const handleSaveResolve = async () => {
     if (!resolvingIssue) return
 
@@ -151,7 +150,6 @@ export default function PendingIssues() {
     }
   }
 
-  // 🔍 Filtrar averías según texto de búsqueda
   const filteredIssues = issues.filter((issue) => {
     const term = searchTerm.toLowerCase()
     return (
@@ -203,7 +201,13 @@ export default function PendingIssues() {
           )}
         </div>
 
-        {/* Tabla de averías */}
+        {/* Encabezado solo para impresión */}
+        <div className="hidden print:block text-center mb-4">
+          <h1 className="text-2xl font-bold text-slate-900 mb-1">Averías Pendientes — {hotelName}</h1>
+          <p className="text-sm text-slate-700">Fecha de impresión: {currentDate}</p>
+        </div>
+
+        {/* Tabla */}
         {loading ? (
           <div className="text-center py-12 text-slate-600">Cargando averías...</div>
         ) : filteredIssues.length === 0 ? (
@@ -214,20 +218,29 @@ export default function PendingIssues() {
           </Card>
         ) : (
           <div className="relative z-0 bg-white rounded-lg shadow overflow-x-auto print:shadow-none">
-            <table className="w-full">
+            <table className="w-full border-collapse">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
-                  <th className="px-2 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Estado</th>
-                  <th className="px-2 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Prioridad</th>
-                  <th className="px-2 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Título</th>
-                  <th className="px-2 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Descripción</th>
-                  <th className="px-2 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Ubicación</th>
-                  <th className="px-2 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Categoría</th>
-                  <th className="px-2 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Reportado por</th>
-                  <th className="px-2 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Fecha</th>
-                  <th className="px-2 py-3 text-left text-xs font-semibold text-slate-700 uppercase print:hidden min-w-[140px]">
-                    Acciones
-                  </th>
+                  {[
+                    "Estado",
+                    "Prioridad",
+                    "Título",
+                    "Descripción",
+                    "Ubicación",
+                    "Categoría",
+                    "Reportado por",
+                    "Fecha",
+                    "Acciones",
+                  ].map((header, i) => (
+                    <th
+                      key={i}
+                      className={`px-2 py-3 text-left text-xs font-semibold text-slate-700 uppercase ${
+                        header === "Acciones" ? "print:hidden" : ""
+                      }`}
+                    >
+                      {header}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
@@ -241,7 +254,9 @@ export default function PendingIssues() {
                         {issue.priority?.toUpperCase() || "BAJA"}
                       </Badge>
                     </td>
-                    <td className="px-2 py-3 text-sm font-medium text-slate-900">{issue.title || "Sin título"}</td>
+                    <td className="px-2 py-3 text-sm font-medium text-slate-900">
+                      {issue.title || "Sin título"}
+                    </td>
                     <td className="px-2 py-3 text-slate-600 text-xs whitespace-normal">
                       {issue.description || "Sin descripción"}
                     </td>
@@ -270,7 +285,7 @@ export default function PendingIssues() {
         )}
       </main>
 
-      {/* ✅ Diálogo completo y corregido */}
+      {/* Modal para resolver */}
       <Dialog open={!!resolvingIssue} onOpenChange={() => setResolvingIssue(null)}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto relative z-50">
           <DialogHeader>
@@ -302,7 +317,7 @@ export default function PendingIssues() {
             <div className="space-y-2">
               <Label>¿Qué se hizo para reparar? *</Label>
               <Textarea
-                placeholder="Describe las acciones realizadas para resolver la avería..."
+                placeholder="Describe las acciones realizadas..."
                 rows={4}
                 value={resolveForm.notes}
                 onChange={(e) => setResolveForm({ ...resolveForm, notes: e.target.value })}
@@ -354,6 +369,57 @@ export default function PendingIssues() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* 🖨️ Estilos de impresión */}
+      <style jsx global>{`
+        @media print {
+          @page {
+            size: A4 landscape;
+            margin: 1cm;
+          }
+
+          body {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            background: white !important;
+            font-size: 10pt;
+          }
+
+          header,
+          .print\\:hidden,
+          .no-print {
+            display: none !important;
+          }
+
+          table {
+            width: 100% !important;
+            border-collapse: collapse !important;
+            table-layout: fixed !important;
+            font-size: 9pt !important;
+          }
+
+          th,
+          td {
+            border: 1px solid #ccc !important;
+            padding: 6px 8px !important;
+            word-wrap: break-word !important;
+          }
+
+          th {
+            background-color: #f3f4f6 !important;
+            color: #111827 !important;
+            font-weight: 600 !important;
+          }
+
+          tr:nth-child(even) {
+            background-color: #fafafa !important;
+          }
+
+          h1 {
+            color: #111 !important;
+          }
+        }
+      `}</style>
     </div>
   )
 }

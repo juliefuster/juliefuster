@@ -1,57 +1,75 @@
-import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { type NextRequest, NextResponse } from "next/server"
+import { createClient } from "@/lib/supabase/server"
 
-export async function GET(request: Request) {
+const INTERVAL_DAYS = 90 // Trimestral
+
+export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const hotel = searchParams.get("hotel");
-    const roomsParam = searchParams.get("rooms");
+    const hotel = request.nextUrl.searchParams.get("hotel")
+    if (!hotel) return NextResponse.json({ error: "Falta el parámetro 'hotel'" }, { status: 400 })
 
-    if (!hotel || !roomsParam) {
-      return NextResponse.json(
-        { error: "Missing hotel or rooms parameter" },
-        { status: 400 }
-      );
-    }
+    const supabase = createClient()
 
-    const rooms = roomsParam.split(",").map((r) => r.trim());
-    const supabase = createClient();
-
-    // Leer última fumigación registrada
-    const { data, error } = await supabase
+    const { data: records, error } = await supabase
       .from("fumigation_records")
-      .select("date, observations")
+      .select("date, rooms, operator_name, observations")
       .eq("hotel", hotel)
       .order("date", { ascending: false })
-      .limit(1);
 
-    if (error) throw error;
+    if (error) throw error
 
-    if (!data || data.length === 0) {
-      return NextResponse.json(
-        rooms.map((room) => ({
-          room,
-          status: "pendiente",
-          last_date: null,
-          notes: null,
-        }))
-      );
+    const lastByRoom: Record<string, { lastDate: string; operator?: string; observations?: string }> = {}
+    for (const rec of records || []) {
+      const rooms =
+        Array.isArray(rec.rooms)
+          ? rec.rooms
+          : typeof rec.rooms === "string" && rec.rooms.startsWith("[")
+          ? JSON.parse(rec.rooms)
+          : []
+
+      for (const room of rooms) {
+        if (!lastByRoom[room]) {
+          lastByRoom[room] = {
+            lastDate: rec.date.split("T")[0],
+            operator: rec.operator_name,
+            observations: rec.observations,
+          }
+        }
+      }
     }
 
-    const last = data[0];
-    const response = rooms.map((room) => ({
-      room,
-      status: "fumigada",
-      last_date: last.date,
-      notes: last.observations || null,
-    }));
+    const today = new Date()
+    const roomsStatus = Object.entries(lastByRoom).map(([room, info]) => {
+      const lastDate = new Date(info.lastDate)
+      const diff = Math.floor((today.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24))
+      const nextDate = new Date(lastDate.getTime() + INTERVAL_DAYS * 24 * 60 * 60 * 1000)
 
-    return NextResponse.json(response);
+      let status = "upcoming"
+      if (diff > INTERVAL_DAYS) status = "overdue"
+      else if (diff >= INTERVAL_DAYS - 10) status = "soon"
+
+      return {
+        room,
+        lastDate: info.lastDate,
+        nextDate: nextDate.toISOString().split("T")[0],
+        operator: info.operator || "N/A",
+        observations: info.observations || "",
+        daysSince: diff,
+        daysRemaining: INTERVAL_DAYS - diff,
+        status,
+      }
+    })
+
+    const summary = {
+      total: roomsStatus.length,
+      clean: roomsStatus.filter(r => r.status === "upcoming").length,
+      soon: roomsStatus.filter(r => r.status === "soon").length,
+      overdue: roomsStatus.filter(r => r.status === "overdue").length,
+    }
+
+    return NextResponse.json({ hotel, summary, rooms: roomsStatus })
   } catch (err: any) {
-    console.error("[v0] Error in fumigation status API:", err.message);
-    return NextResponse.json(
-      { error: "Server error", details: err.message },
-      { status: 500 }
-    );
+    console.error("Error en fumigación:", err)
+    return NextResponse.json({ error: err.message }, { status: 500 })
   }
 }
