@@ -58,7 +58,7 @@ interface AnalyticsData {
     onTimePercent: number
     topOperator: { name: string; count: number } | null
   }
-  tasksPerDay: Record<string, number>
+  tasksPerDaySeries: { date: string; count: number }[]
   tasksByOperator: { name: string; count: number }[]
   avgIntervalByType: { type: string; days: number }[]
   detailData: {
@@ -69,6 +69,13 @@ interface AnalyticsData {
     onTimePercent: number
   }[]
   uniqueOperators: string[]
+  hotelComparison?: { hotel: string; totalTasks: number; avgInterval: number }[]
+  groupBy?: string
+  dateRange?: {
+    start: string
+    end: string
+    days: number
+  }
 }
 
 export default function HotelDashboard() {
@@ -93,6 +100,7 @@ export default function HotelDashboard() {
     endDate: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().split("T")[0],
     taskType: "all",
     operator: "all",
+    dateRangePreset: "month",
   })
   const [uniqueOperators, setUniqueOperators] = useState<string[]>([])
   const [summary, setSummary] = useState<string>("")
@@ -186,6 +194,39 @@ ${analytics.kpis.avgDaysBetweenTasks > 30 ? "⚠️ El promedio de días entre t
       }),
       tareas: pt.count,
     })) ?? []
+
+  const applyDateRangePreset = (preset: string) => {
+    const now = new Date()
+    let start: Date
+    let end: Date = new Date(now)
+
+    switch (preset) {
+      case "7days":
+        start = new Date(now)
+        start.setDate(start.getDate() - 7)
+        break
+      case "30days":
+        start = new Date(now)
+        start.setDate(start.getDate() - 30)
+        break
+      case "90days":
+        start = new Date(now)
+        start.setDate(start.getDate() - 90)
+        break
+      case "month":
+      default:
+        start = new Date(now.getFullYear(), now.getMonth(), 1)
+        end = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+        break
+    }
+
+    setFilters({
+      ...filters,
+      startDate: start.toISOString().split("T")[0],
+      endDate: end.toISOString().split("T")[0],
+      dateRangePreset: preset,
+    })
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
@@ -347,131 +388,162 @@ ${analytics.kpis.avgDaysBetweenTasks > 30 ? "⚠️ El promedio de días entre t
                 </div>
               </div>
             ) : analytics ? (
-              <>
-                <div className="flex flex-col gap-4">
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-2xl font-bold text-slate-900">Análisis de Rendimiento</h2>
-                    <div className="flex gap-2">
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button variant="outline" size="sm" onClick={generateSummary}>
-                            <FileText className="h-4 w-4 mr-2" />
-                            Generar Resumen
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-                          <DialogHeader>
-                            <DialogTitle>Resumen del Análisis</DialogTitle>
-                            <DialogDescription>
-                              Resumen automático del rendimiento del mantenimiento preventivo
-                            </DialogDescription>
-                          </DialogHeader>
-                          {loadingSummary ? (
-                            <div className="flex items-center justify-center py-8">
-                              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                            </div>
-                          ) : (
-                            <div className="whitespace-pre-wrap text-sm font-mono bg-slate-50 p-4 rounded-lg">
-                              {summary}
-                            </div>
-                          )}
-                        </DialogContent>
-                      </Dialog>
-                      <Button onClick={fetchAnalytics} variant="outline" size="sm">
-                        <TrendingUp className="h-4 w-4 mr-2" />
-                        Actualizar
-                      </Button>
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-2xl font-bold text-slate-900">Análisis de Rendimiento</h2>
+                  <div className="flex gap-2">
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button variant="outline" size="sm" onClick={generateSummary}>
+                          <FileText className="h-4 w-4 mr-2" />
+                          Generar Resumen
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                        <DialogHeader>
+                          <DialogTitle>Resumen del Análisis</DialogTitle>
+                          <DialogDescription>
+                            Resumen automático del rendimiento del mantenimiento preventivo
+                          </DialogDescription>
+                        </DialogHeader>
+                        {loadingSummary ? (
+                          <div className="flex items-center justify-center py-8">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                          </div>
+                        ) : (
+                          <div className="whitespace-pre-wrap text-sm font-mono bg-slate-50 p-4 rounded-lg">
+                            {summary}
+                          </div>
+                        )}
+                      </DialogContent>
+                    </Dialog>
+                    <Button onClick={fetchAnalytics} variant="outline" size="sm">
+                      <TrendingUp className="h-4 w-4 mr-2" />
+                      Actualizar
+                    </Button>
+                  </div>
+                </div>
+
+                <Card className="p-4 bg-white">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Filter className="h-4 w-4 text-slate-600" />
+                    <h3 className="text-sm font-semibold text-slate-900">Filtros</h3>
+                  </div>
+                  <div className="mb-4 flex gap-2">
+                    <Button
+                      variant={filters.dateRangePreset === "7days" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => applyDateRangePreset("7days")}
+                    >
+                      7 días
+                    </Button>
+                    <Button
+                      variant={filters.dateRangePreset === "30days" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => applyDateRangePreset("30days")}
+                    >
+                      30 días
+                    </Button>
+                    <Button
+                      variant={filters.dateRangePreset === "90days" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => applyDateRangePreset("90days")}
+                    >
+                      90 días
+                    </Button>
+                    <Button
+                      variant={filters.dateRangePreset === "month" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => applyDateRangePreset("month")}
+                    >
+                      Mes actual
+                    </Button>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="startDate" className="text-xs">
+                        Fecha inicio
+                      </Label>
+                      <Input
+                        id="startDate"
+                        type="date"
+                        value={filters.startDate}
+                        onChange={(e) => setFilters({ ...filters, startDate: e.target.value })}
+                        className="text-sm"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="endDate" className="text-xs">
+                        Fecha fin
+                      </Label>
+                      <Input
+                        id="endDate"
+                        type="date"
+                        value={filters.endDate}
+                        onChange={(e) => setFilters({ ...filters, endDate: e.target.value })}
+                        className="text-sm"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="taskType" className="text-xs">
+                        Tipo de tarea
+                      </Label>
+                      <Select value={filters.taskType} onValueChange={(v) => setFilters({ ...filters, taskType: v })}>
+                        <SelectTrigger id="taskType" className="text-sm">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Todas</SelectItem>
+                          <SelectItem value="Fumigación">Fumigación</SelectItem>
+                          <SelectItem value="Limpieza de filtros">Limpieza de filtros</SelectItem>
+                          <SelectItem value="Cambio de bombas">Cambio de bombas</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="operator" className="text-xs">
+                        Operario
+                      </Label>
+                      <Select value={filters.operator} onValueChange={(v) => setFilters({ ...filters, operator: v })}>
+                        <SelectTrigger id="operator" className="text-sm">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Todos</SelectItem>
+                          {uniqueOperators.map((op) => (
+                            <SelectItem key={op} value={op}>
+                              {op}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
+                  <div className="mt-3 flex justify-end">
+                    <Button onClick={fetchAnalytics} size="sm">
+                      Aplicar Filtros
+                    </Button>
+                  </div>
+                </Card>
 
-                  <Card className="p-4 bg-white">
-                    <div className="flex items-center gap-2 mb-3">
-                      <Filter className="h-4 w-4 text-slate-600" />
-                      <h3 className="text-sm font-semibold text-slate-900">Filtros</h3>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="startDate" className="text-xs">
-                          Fecha inicio
-                        </Label>
-                        <Input
-                          id="startDate"
-                          type="date"
-                          value={filters.startDate}
-                          onChange={(e) => setFilters({ ...filters, startDate: e.target.value })}
-                          className="text-sm"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="endDate" className="text-xs">
-                          Fecha fin
-                        </Label>
-                        <Input
-                          id="endDate"
-                          type="date"
-                          value={filters.endDate}
-                          onChange={(e) => setFilters({ ...filters, endDate: e.target.value })}
-                          className="text-sm"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="taskType" className="text-xs">
-                          Tipo de tarea
-                        </Label>
-                        <Select value={filters.taskType} onValueChange={(v) => setFilters({ ...filters, taskType: v })}>
-                          <SelectTrigger id="taskType" className="text-sm">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">Todas</SelectItem>
-                            <SelectItem value="Fumigación">Fumigación</SelectItem>
-                            <SelectItem value="Limpieza de filtros">Limpieza de filtros</SelectItem>
-                            <SelectItem value="Cambio de bombas">Cambio de bombas</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="operator" className="text-xs">
-                          Operario
-                        </Label>
-                        <Select value={filters.operator} onValueChange={(v) => setFilters({ ...filters, operator: v })}>
-                          <SelectTrigger id="operator" className="text-sm">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">Todos</SelectItem>
-                            {uniqueOperators.map((op) => (
-                              <SelectItem key={op} value={op}>
-                                {op}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <div className="mt-3 flex justify-end">
-                      <Button onClick={fetchAnalytics} size="sm">
-                        Aplicar Filtros
-                      </Button>
+                {analytics.dateRange && (
+                  <Card className="p-4 bg-blue-50 border-blue-200">
+                    <div className="flex items-center gap-2 text-sm text-blue-900">
+                      <Calendar className="h-4 w-4" />
+                      <span>
+                        Mostrando datos de {analytics.dateRange.days} días (
+                        {new Date(analytics.dateRange.start).toLocaleDateString("es-ES")} -{" "}
+                        {new Date(analytics.dateRange.end).toLocaleDateString("es-ES")})
+                      </span>
+                      {analytics.groupBy && (
+                        <Badge variant="secondary" className="ml-2">
+                          Agrupado por{" "}
+                          {analytics.groupBy === "day" ? "día" : analytics.groupBy === "week" ? "semana" : "mes"}
+                        </Badge>
+                      )}
                     </div>
                   </Card>
-
-                  <Card className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
-                    <div className="flex items-start gap-3">
-                      <div className="p-2 bg-blue-100 rounded-lg">
-                        <TrendingUp className="h-5 w-5 text-blue-600" />
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="text-sm font-semibold text-blue-900 mb-1">Resumen Inteligente</h3>
-                        <p className="text-sm text-blue-800">
-                          {analytics.kpis.totalTasksMonth > 0
-                            ? `Se completaron ${analytics.kpis.totalTasksMonth} tareas en el período seleccionado con un ${analytics.kpis.onTimePercent}% de cumplimiento a tiempo. ${analytics.kpis.topOperator ? `${analytics.kpis.topOperator.name} es el operario más activo con ${analytics.kpis.topOperator.count} tareas.` : ""} ${analytics.kpis.onTimePercent >= 80 ? "El rendimiento es excelente." : analytics.kpis.onTimePercent >= 60 ? "El rendimiento es aceptable pero puede mejorar." : "Se recomienda revisar los procesos para mejorar el cumplimiento."}`
-                            : "No hay datos disponibles para el período seleccionado."}
-                        </p>
-                      </div>
-                    </div>
-                  </Card>
-                </div>
+                )}
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <Card className="p-6 bg-white border-blue-200">
@@ -525,6 +597,25 @@ ${analytics.kpis.avgDaysBetweenTasks > 30 ? "⚠️ El promedio de días entre t
                     </div>
                   </Card>
                 </div>
+
+                {analytics.hotelComparison && analytics.hotelComparison.length > 1 && (
+                  <Card className="p-6 bg-white">
+                    <h3 className="text-lg font-semibold text-slate-900 mb-4">Comparativa entre hoteles</h3>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <BarChart data={analytics.hotelComparison}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                        <XAxis dataKey="hotel" stroke="#64748b" fontSize={12} />
+                        <YAxis stroke="#64748b" fontSize={12} />
+                        <Tooltip
+                          contentStyle={{ backgroundColor: "#fff", border: "1px solid #e2e8f0", borderRadius: "8px" }}
+                        />
+                        <Legend />
+                        <Bar dataKey="totalTasks" fill="#3b82f6" radius={[8, 8, 0, 0]} name="Total tareas" />
+                        <Bar dataKey="avgInterval" fill="#10b981" radius={[8, 8, 0, 0]} name="Promedio días" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </Card>
+                )}
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <Card className="p-6 bg-white">
@@ -626,7 +717,7 @@ ${analytics.kpis.avgDaysBetweenTasks > 30 ? "⚠️ El promedio de días entre t
                     </Table>
                   </div>
                 </Card>
-              </>
+              </div>
             ) : (
               <div className="text-center py-12">
                 <BarChart3 className="h-16 w-16 text-slate-300 mx-auto mb-4" />
