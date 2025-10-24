@@ -305,14 +305,22 @@ export default function PendingIssues() {
               />
             </div>
 
-            <div className="space-y-2">
-              <Label>Responsable *</Label>
-              <Input
-                placeholder="Nombre del técnico o responsable"
-                value={resolveForm.responsible}
-                onChange={(e) => setResolveForm({ ...resolveForm, responsible: e.target.value })}
-              />
-            </div>
+           <div className="space-y-2">
+  <Label>Responsable *</Label>
+  <select
+    value={resolveForm.responsible}
+    onChange={(e) => setResolveForm({ ...resolveForm, responsible: e.target.value })}
+    className="w-full border border-slate-300 rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+  >
+    <option value="">Seleccionar operario...</option>
+    <option value="xavi">Xavi</option>
+    <option value="john">John</option>
+    <option value="julie">Julie</option>
+    <option value="antonia">Antonia</option>
+    <option value="xavi/john">Xavi/John</option>
+  </select>
+</div>
+
 
             <div className="space-y-2">
               <Label>¿Qué se hizo para reparar? *</Label>
