@@ -284,15 +284,15 @@ export default function PendingIssues() {
 
       {/* Modal para resolver */}
       <Dialog open={!!resolvingIssue} onOpenChange={() => setResolvingIssue(null)}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto relative z-50">
-          <DialogHeader>
+        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle>Marcar Avería como Resuelta</DialogTitle>
             <DialogDescription>
               Completa la información sobre la resolución de la avería: {resolvingIssue?.title}
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
+          <div className="flex-1 overflow-y-auto space-y-4 py-4 pr-2">
             <div className="space-y-2">
               <Label>Fecha de Finalización *</Label>
               <Input
@@ -362,7 +362,7 @@ export default function PendingIssues() {
             </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="flex-shrink-0 pt-4 border-t">
             <Button variant="outline" onClick={() => setResolvingIssue(null)}>
               Cancelar
             </Button>
