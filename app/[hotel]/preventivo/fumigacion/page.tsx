@@ -14,7 +14,7 @@ interface FumigationRecord {
   date: string
   operator_name: string
   observations: string | null
-  rooms: string[]
+  room: string // Single room per entry
   next_date?: string | null
   diferencia_dias?: number | null
   estado?: "adelantada" | "correcta" | null
@@ -40,12 +40,10 @@ export default function FumigationHistoryPage() {
   const [roomStatus, setRoomStatus] = useState<RoomStatus[]>([])
   const [showOnlyPending, setShowOnlyPending] = useState(true)
 
-  // 🔹 Cargar registros al montar
   useEffect(() => {
     fetchRecords()
   }, [hotel])
 
-  // 🔹 Filtro por búsqueda
   useEffect(() => {
     if (!searchTerm.trim()) {
       setFilteredRecords(records)
@@ -56,12 +54,11 @@ export default function FumigationHistoryPage() {
       (r) =>
         r.operator_name?.toLowerCase().includes(term) ||
         (r.observations ?? "").toLowerCase().includes(term) ||
-        r.rooms?.some((room) => room.toLowerCase().includes(term)),
+        r.room?.toLowerCase().includes(term),
     )
     setFilteredRecords(filtered)
   }, [searchTerm, records])
 
-  // 🔹 Cargar registros desde el backend
   const fetchRecords = async () => {
     try {
       setLoading(true)
@@ -71,40 +68,10 @@ export default function FumigationHistoryPage() {
       const data = await response.json()
       if (!Array.isArray(data)) throw new Error("Formato de datos inválido")
 
-      const formatted = data.map((r: any) => {
-        let parsedRooms: string[] = []
-
-        if (Array.isArray(r.rooms)) {
-          // Already an array from jsonb
-          parsedRooms = r.rooms.map(String).filter(Boolean)
-        } else if (typeof r.rooms === "string") {
-          // Legacy string format: "503, 504, 505"
-          parsedRooms = r.rooms
-            .replace(/[[\]"]/g, "")
-            .split(",")
-            .map((x) => x.trim())
-            .filter(Boolean)
-        }
-
-        console.log("[v0] Parsed rooms for record:", { id: r.id, rooms: r.rooms, parsedRooms })
-
-        return {
-          id: r.id,
-          hotel: r.hotel,
-          date: r.date,
-          operator_name: r.operator_name,
-          observations: r.observations || null,
-          rooms: parsedRooms,
-          next_date: r.next_date || null,
-          diferencia_dias: r.diferencia_dias || null,
-          estado: r.estado || null,
-        }
-      })
-
-      console.log(`[v0] Registros de fumigación cargados: ${formatted.length}`)
-      setRecords(formatted)
-      setFilteredRecords(formatted)
-      calculateRoomStatus(formatted)
+      console.log(`[v0] Registros de fumigación cargados: ${data.length}`)
+      setRecords(data)
+      setFilteredRecords(data)
+      calculateRoomStatus(data)
     } catch (error) {
       console.error("💥 Error fetching fumigation records:", error)
     } finally {
@@ -112,27 +79,24 @@ export default function FumigationHistoryPage() {
     }
   }
 
-  // 🔸 Calcular estado por habitación
   const calculateRoomStatus = (records: FumigationRecord[]) => {
     const now = new Date()
     const roomMap: Record<string, RoomStatus> = {}
 
     records.forEach((record) => {
-      const rooms = record.rooms || []
+      const room = record.room
       const next = record.next_date ? new Date(record.next_date) : null
 
-      rooms.forEach((room) => {
-        if (!roomMap[room] || new Date(record.date) > new Date(roomMap[room].next_date || 0)) {
-          const diffDays = next ? Math.ceil((next.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : 0
-          const status = diffDays >= 0 ? "fumigada" : "pendiente"
-          roomMap[room] = {
-            room,
-            status,
-            days: Math.abs(diffDays),
-            next_date: record.next_date || null,
-          }
+      if (!roomMap[room] || new Date(record.date) > new Date(roomMap[room].next_date || 0)) {
+        const diffDays = next ? Math.ceil((next.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : 0
+        const status = diffDays >= 0 ? "fumigada" : "pendiente"
+        roomMap[room] = {
+          room,
+          status,
+          days: Math.abs(diffDays),
+          next_date: record.next_date || null,
         }
-      })
+      }
     })
 
     setRoomStatus(Object.values(roomMap).sort((a, b) => a.room.localeCompare(b.room)))
@@ -145,8 +109,6 @@ export default function FumigationHistoryPage() {
       year: "numeric",
       month: "long",
       day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
     })
 
   const filteredRooms = showOnlyPending ? roomStatus.filter((r) => r.status === "pendiente") : roomStatus
@@ -299,8 +261,8 @@ export default function FumigationHistoryPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Registros de Fumigación</CardTitle>
-              <CardDescription>Historial completo de fumigaciones realizadas</CardDescription>
+              <CardTitle>Registros de Fumigación por Habitación</CardTitle>
+              <CardDescription>Historial detallado con análisis de frecuencia por habitación</CardDescription>
             </CardHeader>
             <CardContent>
               {loading ? (
@@ -313,8 +275,8 @@ export default function FumigationHistoryPage() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Fecha</TableHead>
+                        <TableHead>Habitación</TableHead>
                         <TableHead>Operario</TableHead>
-                        <TableHead>Habitaciones</TableHead>
                         <TableHead>Próxima Fecha</TableHead>
                         <TableHead>Días desde anterior</TableHead>
                         <TableHead>Estado</TableHead>
@@ -322,22 +284,15 @@ export default function FumigationHistoryPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredRecords.map((record) => (
-                        <TableRow key={record.id}>
+                      {filteredRecords.map((record, idx) => (
+                        <TableRow key={`${record.id}-${record.room}-${idx}`}>
                           <TableCell>{formatDate(record.date)}</TableCell>
-                          <TableCell>{record.operator_name}</TableCell>
                           <TableCell>
-                            <div className="flex flex-wrap gap-1">
-                              {record.rooms.map((r, i) => (
-                                <span
-                                  key={i}
-                                  className="inline-flex items-center px-2 py-1 rounded-md bg-purple-100 text-purple-800 text-xs font-medium"
-                                >
-                                  {r}
-                                </span>
-                              ))}
-                            </div>
+                            <span className="inline-flex items-center px-2 py-1 rounded-md bg-purple-100 text-purple-800 text-xs font-medium">
+                              {record.room}
+                            </span>
                           </TableCell>
+                          <TableCell>{record.operator_name}</TableCell>
                           <TableCell>
                             {record.next_date
                               ? new Date(record.next_date).toLocaleDateString("es-ES", {

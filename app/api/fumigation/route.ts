@@ -22,33 +22,94 @@ export async function GET(request: NextRequest) {
       throw error
     }
 
-    const recordsWithStatus =
-      data?.map((record, index) => {
-        // Find the previous fumigation (next in the array since we're sorted descending)
-        const previousRecord = data[index + 1]
+    // Expand records into individual room entries with per-room status
+    const roomEntries: any[] = []
 
+    // Process each record
+    for (const record of data || []) {
+      // Parse rooms from the record
+      let rooms: string[] = []
+      if (Array.isArray(record.rooms)) {
+        rooms = record.rooms
+      } else if (typeof record.rooms === "string") {
+        try {
+          // Try parsing as JSON first
+          rooms = JSON.parse(record.rooms)
+        } catch {
+          // If not JSON, split by comma
+          rooms = record.rooms
+            .replace(/[[\]"]/g, "")
+            .split(",")
+            .map((r: string) => r.trim())
+            .filter(Boolean)
+        }
+      }
+
+      // For each room in this record, calculate its individual status
+      for (const room of rooms) {
+        // Find the previous fumigation of this specific room
+        let previousDate: Date | null = null
+
+        // Look through all records to find the previous fumigation of this room
+        for (const otherRecord of data || []) {
+          // Skip if it's the same record or a later date
+          if (otherRecord.id === record.id || new Date(otherRecord.date) >= new Date(record.date)) {
+            continue
+          }
+
+          // Check if this record contains the same room
+          let otherRooms: string[] = []
+          if (Array.isArray(otherRecord.rooms)) {
+            otherRooms = otherRecord.rooms
+          } else if (typeof otherRecord.rooms === "string") {
+            try {
+              otherRooms = JSON.parse(otherRecord.rooms)
+            } catch {
+              otherRooms = otherRecord.rooms
+                .replace(/[[\]"]/g, "")
+                .split(",")
+                .map((r: string) => r.trim())
+                .filter(Boolean)
+            }
+          }
+
+          // If this record contains the same room, check if it's the most recent previous one
+          if (otherRooms.includes(room)) {
+            const otherDate = new Date(otherRecord.date)
+            if (!previousDate || otherDate > previousDate) {
+              previousDate = otherDate
+            }
+          }
+        }
+
+        // Calculate days difference and status for this room
         let diferencia_dias: number | null = null
         let estado: "adelantada" | "correcta" | null = null
 
-        if (previousRecord) {
+        if (previousDate) {
           const currentDate = new Date(record.date)
-          const previousDate = new Date(previousRecord.date)
           const diffTime = currentDate.getTime() - previousDate.getTime()
           diferencia_dias = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-
-          // Determine status based on 90-day cycle
           estado = diferencia_dias < 90 ? "adelantada" : "correcta"
         }
 
-        return {
-          ...record,
+        // Add this room entry
+        roomEntries.push({
+          id: record.id,
+          hotel: record.hotel,
+          date: record.date,
+          operator_name: record.operator_name,
+          room: room, // Single room
+          observations: record.observations,
+          next_date: record.next_date,
           diferencia_dias,
           estado,
-        }
-      }) || []
+        })
+      }
+    }
 
-    console.log("[v0] Fumigation records fetched:", recordsWithStatus.length)
-    return NextResponse.json(recordsWithStatus)
+    console.log("[v0] Fumigation room entries created:", roomEntries.length)
+    return NextResponse.json(roomEntries)
   } catch (error) {
     console.error("[v0] Error in GET /api/fumigation:", error)
     return NextResponse.json({ error: "Failed to fetch fumigation records" }, { status: 500 })
