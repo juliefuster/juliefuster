@@ -516,8 +516,8 @@ export default function PreventiveMaintenance() {
                   <CardTitle>Tareas Pendientes y del Día</CardTitle>
                   <CardDescription>Muestra las tareas que están vencidas o que tocan hoy</CardDescription>
                 </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={handlePrint} className="print:hidden bg-transparent">
+                <div className="flex gap-2 print:hidden">
+                  <Button variant="outline" size="sm" onClick={handlePrint}>
                     <Printer className="h-4 w-4 mr-2" />
                     Imprimir
                   </Button>
@@ -554,7 +554,6 @@ export default function PreventiveMaintenance() {
                     const today = new Date()
                     today.setHours(0, 0, 0, 0)
 
-                    // 🔸 Filtramos solo las tareas del día y las vencidas
                     const filtered = upcomingTasks
                       .map((task) => {
                         const taskDate = new Date(task.date)
@@ -573,92 +572,92 @@ export default function PreventiveMaintenance() {
                       )
 
                     return (
-                      <div className="space-y-2 print:space-y-1">
-                        {filtered.map((task, i) => {
-                          const isOverdue = task.daysUntil < 0
-                          const isToday = task.daysUntil === 0
+                      <div className="overflow-x-auto">
+                        <table className="w-full border-collapse">
+                          <thead>
+                            <tr className="bg-slate-100 border-b-2 border-slate-300">
+                              <th className="text-left p-3 font-semibold text-slate-700">Estado</th>
+                              <th className="text-left p-3 font-semibold text-slate-700">Tipo de Tarea</th>
+                              <th className="text-left p-3 font-semibold text-slate-700">Fecha</th>
+                              <th className="text-left p-3 font-semibold text-slate-700">Habitaciones</th>
+                              <th className="text-left p-3 font-semibold text-slate-700">Último Responsable</th>
+                              <th className="text-left p-3 font-semibold text-slate-700">Última Vez</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {filtered.map((task, i) => {
+                              const isOverdue = task.daysUntil < 0
+                              const isToday = task.daysUntil === 0
 
-                          return (
-                            <div
-                              key={i}
-                              className={`flex flex-col md:flex-row items-start md:items-center justify-between gap-2 border rounded-xl p-3 shadow-sm transition-all ${
-                                isOverdue ? "border-red-300 bg-red-50" : "border-orange-300 bg-orange-50"
-                              }`}
-                            >
-                              <div className="flex items-center gap-3 flex-wrap">
-                                <div
-                                  className={`p-2 rounded-full ${
-                                    isOverdue ? "bg-red-200 text-red-800" : "bg-orange-200 text-orange-800"
+                              return (
+                                <tr
+                                  key={i}
+                                  className={`border-b border-slate-200 hover:bg-slate-50 transition-colors ${
+                                    isOverdue ? "bg-red-50" : isToday ? "bg-orange-50" : ""
                                   }`}
                                 >
-                                  {isOverdue ? <AlertTriangle className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
-                                </div>
-                                <div>
-                                  <p className="font-semibold text-slate-800 leading-tight">{task.type}</p>
-                                  <p className="text-xs text-slate-600">
-                                    {isOverdue ? `Retrasada (${Math.abs(task.daysUntil)} días)` : "Hoy"}
-                                    {" • "}
-                                    {task.frequency}
-                                  </p>
-                                </div>
-                              </div>
-
-                              <div className="text-xs text-slate-700 space-y-1 md:text-right">
-                                {task.rooms?.length > 0 && (
-                                  <p>
-                                    <strong>Habitaciones:</strong> {task.rooms.slice(0, 6).join(", ")}
-                                    {task.rooms.length > 6 && " ..."}
-                                  </p>
-                                )}
-                                {task.operator_name && (
-                                  <p>
-                                    <strong>Último:</strong> {task.operator_name}
-                                  </p>
-                                )}
-                                {task.lastCompleted && (
-                                  <p>
-                                    <strong>Última vez:</strong>{" "}
-                                    {new Date(task.lastCompleted).toLocaleDateString("es-ES")}
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                          )
-                        })}
+                                  <td className="p-3">
+                                    <div className="flex items-center gap-2">
+                                      <div
+                                        className={`p-2 rounded-full ${
+                                          isOverdue ? "bg-red-200 text-red-800" : "bg-orange-200 text-orange-800"
+                                        }`}
+                                      >
+                                        {isOverdue ? (
+                                          <AlertTriangle className="h-4 w-4" />
+                                        ) : (
+                                          <Clock className="h-4 w-4" />
+                                        )}
+                                      </div>
+                                      <span className="text-sm font-medium">
+                                        {isOverdue ? `${Math.abs(task.daysUntil)} días de retraso` : "Hoy"}
+                                      </span>
+                                    </div>
+                                  </td>
+                                  <td className="p-3">
+                                    <div>
+                                      <p className="font-semibold text-slate-800">{task.type}</p>
+                                      <p className="text-xs text-slate-600">{task.frequency}</p>
+                                    </div>
+                                  </td>
+                                  <td className="p-3 text-sm text-slate-700">
+                                    {task.taskDate.toLocaleDateString("es-ES")}
+                                  </td>
+                                  <td className="p-3">
+                                    {task.rooms?.length > 0 ? (
+                                      <div className="flex flex-wrap gap-1">
+                                        {task.rooms.slice(0, 8).map((room: string, idx: number) => (
+                                          <Badge key={idx} variant="outline" className="text-xs">
+                                            {room}
+                                          </Badge>
+                                        ))}
+                                        {task.rooms.length > 8 && (
+                                          <Badge variant="outline" className="text-xs">
+                                            +{task.rooms.length - 8}
+                                          </Badge>
+                                        )}
+                                      </div>
+                                    ) : (
+                                      <span className="text-sm text-slate-500">-</span>
+                                    )}
+                                  </td>
+                                  <td className="p-3 text-sm text-slate-700">{task.operator_name || "-"}</td>
+                                  <td className="p-3 text-sm text-slate-700">
+                                    {task.lastCompleted
+                                      ? new Date(task.lastCompleted).toLocaleDateString("es-ES")
+                                      : "-"}
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
                       </div>
                     )
                   })()
                 )}
               </CardContent>
             </Card>
-
-            {/* 🔹 Estilo para impresión limpia */}
-            <style jsx global>{`
-              @media print {
-                @page {
-                  size: A4 portrait;
-                  margin: 1cm;
-                }
-                body {
-                  background: white;
-                  -webkit-print-color-adjust: exact;
-                  print-color-adjust: exact;
-                }
-                .print\\:hidden {
-                  display: none !important;
-                }
-                button,
-                header,
-                nav {
-                  display: none !important;
-                }
-                .card,
-                .Card {
-                  box-shadow: none !important;
-                  border-color: #ccc !important;
-                }
-              }
-            `}</style>
           </TabsContent>
 
           <TabsContent value="history" className="space-y-6">
@@ -1166,12 +1165,70 @@ export default function PreventiveMaintenance() {
 
       <style jsx global>{`
         @media print {
-          body * {
-            visibility: hidden;
+          @page {
+            size: A4 landscape;
+            margin: 1cm;
           }
-          .print\\:block,
-          .print\\:block * {
-            visibility: visible;
+          
+          body {
+            background: white !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          
+          /* Hide navigation and buttons */
+          header,
+          nav,
+          button,
+          .print\\:hidden {
+            display: none !important;
+          }
+          
+          /* Show main content */
+          main {
+            display: block !important;
+          }
+          
+          /* Table styles for print */
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            page-break-inside: auto;
+          }
+          
+          tr {
+            page-break-inside: avoid;
+            page-break-after: auto;
+          }
+          
+          thead {
+            display: table-header-group;
+          }
+          
+          th, td {
+            border: 1px solid #ccc !important;
+            padding: 8px !important;
+          }
+          
+          th {
+            background-color: #f1f5f9 !important;
+            font-weight: bold;
+          }
+          
+          /* Preserve row colors */
+          .bg-red-50 {
+            background-color: #fef2f2 !important;
+          }
+          
+          .bg-orange-50 {
+            background-color: #fff7ed !important;
+          }
+          
+          /* Card styles */
+          .card,
+          [class*="Card"] {
+            box-shadow: none !important;
+            border: 1px solid #ccc !important;
           }
         }
       `}</style>
