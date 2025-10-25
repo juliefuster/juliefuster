@@ -17,6 +17,8 @@ interface MonthlyTaskRecord {
   observations: string | null
   date: string
   next_date: string | null
+  diferencia_dias: number | null
+  estado: "adelantada" | "correcta"
 }
 
 interface TaskStatus {
@@ -34,7 +36,7 @@ export default function MonthlyTasksHistoryPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
   const [selectedMonth, setSelectedMonth] = useState("Todos")
-  const [showStatusView, setShowStatusView] = useState(true)
+  const [showStatusView, setShowStatusView] = useState(false)
   const [taskStatus, setTaskStatus] = useState<TaskStatus[]>([])
   const [showOnlyPending, setShowOnlyPending] = useState(true)
 
@@ -47,6 +49,7 @@ export default function MonthlyTasksHistoryPage() {
       const response = await fetch(`/api/monthly-tasks?hotel=${hotel}`)
       if (!response.ok) throw new Error("Error fetching records")
       const data = await response.json()
+      console.log("[v0] Registros de tareas mensuales cargados:", data.length)
       setRecords(data)
       calculateTaskStatus(data)
     } catch (error) {
@@ -372,7 +375,10 @@ export default function MonthlyTasksHistoryPage() {
                                 <User className="inline mr-2 h-4 w-4" />
                                 Operario
                               </TableHead>
-                              <TableHead className="w-2/3">Observaciones</TableHead>
+                              <TableHead className="w-1/6">Próxima Fecha</TableHead>
+                              <TableHead className="w-1/6">Días desde anterior</TableHead>
+                              <TableHead className="w-1/6">Estado</TableHead>
+                              <TableHead className="w-2/6">Observaciones</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -381,6 +387,34 @@ export default function MonthlyTasksHistoryPage() {
                                 <TableCell className="text-sm whitespace-nowrap">{formatDate(r.date)}</TableCell>
                                 <TableCell className="text-sm whitespace-nowrap">
                                   <Badge variant="secondary">{r.operator_name}</Badge>
+                                </TableCell>
+                                <TableCell className="text-sm">
+                                  {r.next_date
+                                    ? new Date(r.next_date).toLocaleDateString("es-ES", {
+                                        day: "2-digit",
+                                        month: "short",
+                                      })
+                                    : "-"}
+                                </TableCell>
+                                <TableCell className="text-sm">
+                                  {r.diferencia_dias !== null ? (
+                                    <span>{r.diferencia_dias} días</span>
+                                  ) : (
+                                    <span className="text-muted-foreground">Primera vez</span>
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  {r.diferencia_dias === null ? (
+                                    <Badge variant="secondary">Primera</Badge>
+                                  ) : r.estado === "adelantada" ? (
+                                    <Badge variant="destructive" className="bg-orange-500">
+                                      Adelantada
+                                    </Badge>
+                                  ) : (
+                                    <Badge variant="default" className="bg-green-600">
+                                      Correcta
+                                    </Badge>
+                                  )}
                                 </TableCell>
                                 <TableCell
                                   className="text-xs text-slate-700 truncate max-w-[500px]"

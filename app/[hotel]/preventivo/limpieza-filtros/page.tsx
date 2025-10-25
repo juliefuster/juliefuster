@@ -5,16 +5,19 @@ import { useParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge"
 import { ArrowLeft, Printer, Eye, CheckCircle2, AlertTriangle, Filter } from "lucide-react"
 
 interface FilterCleaningRecord {
   id: string
   hotel: string
-  cleaned_filters: string[]
+  room: string
   operator_name: string
   observations: string | null
   created_at: string
-  next_date?: string | null
+  next_date: string
+  diferencia_dias: number | null
+  estado: "adelantada" | "correcta"
 }
 
 interface RoomStatus {
@@ -31,9 +34,9 @@ export default function FilterCleaningHistoryPage() {
 
   const [records, setRecords] = useState<FilterCleaningRecord[]>([])
   const [loading, setLoading] = useState(true)
-  const [showStatusView, setShowStatusView] = useState(true) // 👈 Vista rápida primero
+  const [showStatusView, setShowStatusView] = useState(false) // Start with history view
   const [roomStatus, setRoomStatus] = useState<RoomStatus[]>([])
-  const [showOnlyDirty, setShowOnlyDirty] = useState(true) // 👈 Mostrar solo sucias por defecto
+  const [showOnlyDirty, setShowOnlyDirty] = useState(true)
 
   useEffect(() => {
     fetchRecords()
@@ -45,6 +48,7 @@ export default function FilterCleaningHistoryPage() {
       const response = await fetch(`/api/filter-cleaning?hotel=${hotel}`)
       if (!response.ok) throw new Error("Failed to fetch records")
       const data = await response.json()
+      console.log("[v0] Registros de limpieza de filtros cargados:", data.length)
       setRecords(data)
       calculateRoomStatus(data)
     } catch (error) {
@@ -59,23 +63,20 @@ export default function FilterCleaningHistoryPage() {
     const roomMap: Record<string, RoomStatus> = {}
 
     records.forEach((record) => {
-      const cleaned = record.cleaned_filters || []
+      const room = record.room
       const next = record.next_date ? new Date(record.next_date) : null
+      const recordDate = new Date(record.created_at)
 
-      cleaned.forEach((room) => {
-        if (!roomMap[room] || new Date(record.created_at) > new Date(roomMap[room].next_date || 0)) {
-          const diffDays = next
-            ? Math.ceil((next.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-            : 0
-          const status = diffDays >= 0 ? "limpia" : "sucia"
-          roomMap[room] = {
-            room,
-            status,
-            days: Math.abs(diffDays),
-            next_date: record.next_date || null,
-          }
+      if (!roomMap[room] || recordDate > new Date(roomMap[room].next_date || 0)) {
+        const diffDays = next ? Math.ceil((next.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : 0
+        const status = diffDays >= 0 ? "limpia" : "sucia"
+        roomMap[room] = {
+          room,
+          status,
+          days: Math.abs(diffDays),
+          next_date: record.next_date || null,
         }
-      })
+      }
     })
 
     setRoomStatus(Object.values(roomMap).sort((a, b) => a.room.localeCompare(b.room)))
@@ -92,9 +93,7 @@ export default function FilterCleaningHistoryPage() {
       minute: "2-digit",
     })
 
-  const filteredRooms = showOnlyDirty
-    ? roomStatus.filter((r) => r.status === "sucia")
-    : roomStatus
+  const filteredRooms = showOnlyDirty ? roomStatus.filter((r) => r.status === "sucia") : roomStatus
 
   const totalClean = roomStatus.filter((r) => r.status === "limpia").length
   const totalDirty = roomStatus.filter((r) => r.status === "sucia").length
@@ -109,18 +108,13 @@ export default function FilterCleaningHistoryPage() {
           </Button>
           <div>
             <h1 className="text-3xl font-bold">Historial de Limpieza de Filtros</h1>
-            <p className="text-muted-foreground">
-              Hotel {hotel.charAt(0).toUpperCase() + hotel.slice(1)}
-            </p>
+            <p className="text-muted-foreground">Hotel {hotel.charAt(0).toUpperCase() + hotel.slice(1)}</p>
           </div>
         </div>
 
         <div className="flex gap-2 print:hidden">
           {showStatusView && (
-            <Button
-              variant={showOnlyDirty ? "default" : "outline"}
-              onClick={() => setShowOnlyDirty(!showOnlyDirty)}
-            >
+            <Button variant={showOnlyDirty ? "default" : "outline"} onClick={() => setShowOnlyDirty(!showOnlyDirty)}>
               <Filter className="h-4 w-4 mr-2" />
               {showOnlyDirty ? "Ver todas" : "Ver solo sucias"}
             </Button>
@@ -141,9 +135,7 @@ export default function FilterCleaningHistoryPage() {
         <Card>
           <CardHeader>
             <CardTitle>Estado de Filtros por Habitación</CardTitle>
-            <CardDescription>
-              Visualiza qué habitaciones tienen filtros limpios o sucios
-            </CardDescription>
+            <CardDescription>Visualiza qué habitaciones tienen filtros limpios o sucios</CardDescription>
           </CardHeader>
           <CardContent>
             {/* 🔸 Resumen */}
@@ -160,9 +152,7 @@ export default function FilterCleaningHistoryPage() {
 
             {filteredRooms.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                {showOnlyDirty
-                  ? "No hay habitaciones sucias actualmente 😎"
-                  : "No hay datos de estado de filtros"}
+                {showOnlyDirty ? "No hay habitaciones sucias actualmente 😎" : "No hay datos de estado de filtros"}
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -179,10 +169,7 @@ export default function FilterCleaningHistoryPage() {
                     {filteredRooms.map((room) => {
                       const totalCycle = 14
                       const days = Math.min(room.days, totalCycle)
-                      const percentage =
-                        room.status === "limpia"
-                          ? ((totalCycle - days) / totalCycle) * 100
-                          : 100
+                      const percentage = room.status === "limpia" ? ((totalCycle - days) / totalCycle) * 100 : 100
 
                       return (
                         <TableRow key={room.room}>
@@ -220,10 +207,7 @@ export default function FilterCleaningHistoryPage() {
                                     room.status === "limpia" ? "bg-green-500" : "bg-red-500"
                                   }`}
                                   style={{
-                                    width:
-                                      room.status === "limpia"
-                                        ? `${100 - percentage}%`
-                                        : "100%",
+                                    width: room.status === "limpia" ? `${100 - percentage}%` : "100%",
                                   }}
                                 />
                               </div>
@@ -257,47 +241,67 @@ export default function FilterCleaningHistoryPage() {
       {!showStatusView && (
         <Card>
           <CardHeader>
-            <CardTitle>Registros de Limpieza</CardTitle>
-            <CardDescription>
-              Historial completo de limpiezas de filtros de aire acondicionado
-            </CardDescription>
+            <CardTitle>Registros de Limpieza por Habitación</CardTitle>
+            <CardDescription>Historial completo de limpiezas de filtros con análisis de frecuencia</CardDescription>
           </CardHeader>
           <CardContent>
             {loading ? (
               <div className="text-center py-8 text-muted-foreground">Cargando registros...</div>
             ) : records.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                No hay registros de limpieza de filtros
-              </div>
+              <div className="text-center py-8 text-muted-foreground">No hay registros de limpieza de filtros</div>
             ) : (
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead>Habitación</TableHead>
                       <TableHead>Fecha</TableHead>
                       <TableHead>Operario</TableHead>
-                      <TableHead>Filtros Limpiados</TableHead>
+                      <TableHead>Próxima Fecha</TableHead>
+                      <TableHead>Días desde anterior</TableHead>
+                      <TableHead>Estado</TableHead>
                       <TableHead>Observaciones</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {records.map((record) => (
                       <TableRow key={record.id}>
-                        <TableCell className="whitespace-nowrap">{formatDate(record.created_at)}</TableCell>
+                        <TableCell className="font-medium">{record.room}</TableCell>
+                        <TableCell className="whitespace-nowrap">
+                          {new Date(record.created_at).toLocaleDateString("es-ES", {
+                            day: "2-digit",
+                            month: "short",
+                            year: "numeric",
+                          })}
+                        </TableCell>
                         <TableCell>{record.operator_name}</TableCell>
                         <TableCell>
-                          <div className="flex flex-wrap gap-1">
-                            {record.cleaned_filters.map((filter, index) => (
-                              <span
-                                key={index}
-                                className="inline-flex items-center px-2 py-1 rounded-md bg-blue-100 text-blue-800 text-xs font-medium"
-                              >
-                                {filter}
-                              </span>
-                            ))}
-                          </div>
+                          {new Date(record.next_date).toLocaleDateString("es-ES", {
+                            day: "2-digit",
+                            month: "short",
+                          })}
                         </TableCell>
-                        <TableCell className="max-w-xs">{record.observations || "-"}</TableCell>
+                        <TableCell>
+                          {record.diferencia_dias !== null ? (
+                            <span className="text-sm">{record.diferencia_dias} días</span>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">Primera limpieza</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {record.diferencia_dias === null ? (
+                            <Badge variant="secondary">Primera</Badge>
+                          ) : record.estado === "adelantada" ? (
+                            <Badge variant="destructive" className="bg-orange-500">
+                              Adelantada
+                            </Badge>
+                          ) : (
+                            <Badge variant="default" className="bg-green-600">
+                              Correcta
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="max-w-xs truncate">{record.observations || "-"}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
