@@ -51,18 +51,22 @@ export async function GET(request: NextRequest) {
     if (fumigations && fumigations.length > 0) {
       const roomLastFumigation: Record<string, { date: Date; operator: string }> = {}
 
-      // Find the last fumigation date for each room
       fumigations.forEach((fum) => {
         let rooms: string[] = []
         try {
-          if (fum.rooms && typeof fum.rooms === "string") {
-            rooms = fum.rooms
-              .split(",")
-              .map((r) => r.trim())
-              .filter((r) => r)
+          if (fum.rooms) {
+            // Handle jsonb array format (new) or comma-separated string (legacy)
+            if (Array.isArray(fum.rooms)) {
+              rooms = fum.rooms.filter((r) => r)
+            } else if (typeof fum.rooms === "string") {
+              rooms = fum.rooms
+                .split(",")
+                .map((r) => r.trim())
+                .filter((r) => r)
+            }
           }
         } catch (e) {
-          console.error("[v0] Error parsing fumigation rooms:", e)
+          console.error("[v0] Error parsing fumigation rooms:", e, fum.rooms)
         }
 
         const fumDate = new Date(fum.date)
@@ -75,6 +79,8 @@ export async function GET(request: NextRequest) {
           }
         })
       })
+
+      console.log("[v0] Fumigation rooms processed:", Object.keys(roomLastFumigation).length)
 
       // Calculate next fumigation date for each room (90 days after last fumigation)
       Object.entries(roomLastFumigation).forEach(([room, info]) => {
@@ -162,8 +168,8 @@ export async function GET(request: NextRequest) {
 
     console.log("[v0] Upcoming tasks fetched:", upcomingTasks.length)
     console.log(
-      "[v0] Sample task dates:",
-      upcomingTasks.slice(0, 3).map((t) => ({ type: t.type, date: t.date, rooms: t.rooms?.length || 0 })),
+      "[v0] Sample task types:",
+      upcomingTasks.slice(0, 5).map((t) => ({ type: t.type, date: t.date, rooms: t.rooms?.length || 0 })),
     )
 
     return NextResponse.json({ tasks: upcomingTasks })

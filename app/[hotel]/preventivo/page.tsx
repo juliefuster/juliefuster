@@ -513,152 +513,152 @@ export default function PreventiveMaintenance() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
-                  <CardTitle>Próximas Tareas de Mantenimiento</CardTitle>
-                  <CardDescription>Tareas programadas para los próximos 7 días</CardDescription>
+                  <CardTitle>Tareas Pendientes y del Día</CardTitle>
+                  <CardDescription>Muestra las tareas que están vencidas o que tocan hoy</CardDescription>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={async () => {
-                    setLoadingUpcoming(true)
-                    try {
-                      const res = await fetch(`/api/preventive-maintenance/upcoming?hotel=${hotel}`)
-                      const data = await res.json()
-                      setUpcomingTasks(data.tasks || [])
-                    } catch (err) {
-                      console.error("Error refreshing tasks:", err)
-                    } finally {
-                      setLoadingUpcoming(false)
-                    }
-                  }}
-                  disabled={loadingUpcoming}
-                >
-                  {loadingUpcoming ? "Actualizando..." : "Actualizar"}
-                </Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={handlePrint} className="print:hidden bg-transparent">
+                    <Printer className="h-4 w-4 mr-2" />
+                    Imprimir
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      setLoadingUpcoming(true)
+                      try {
+                        const res = await fetch(`/api/preventive-maintenance/upcoming?hotel=${hotel}`)
+                        const data = await res.json()
+                        setUpcomingTasks(data.tasks || [])
+                      } catch (err) {
+                        console.error("Error refrescando tareas:", err)
+                      } finally {
+                        setLoadingUpcoming(false)
+                      }
+                    }}
+                    disabled={loadingUpcoming}
+                  >
+                    {loadingUpcoming ? "Actualizando..." : "Actualizar"}
+                  </Button>
+                </div>
               </CardHeader>
 
               <CardContent>
                 {loadingUpcoming ? (
                   <div className="text-center py-12 text-slate-500">
-                    <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50 animate-pulse" />
+                    <Calendar className="h-10 w-10 mx-auto mb-3 opacity-50 animate-pulse" />
                     <p>Cargando tareas...</p>
                   </div>
                 ) : (
                   (() => {
-                    // Filter tasks for next 7 days
                     const today = new Date()
                     today.setHours(0, 0, 0, 0)
-                    const sevenDaysFromNow = new Date(today)
-                    sevenDaysFromNow.setDate(today.getDate() + 7)
 
-                    const weeklyTasks = upcomingTasks
+                    // 🔸 Filtramos solo las tareas del día y las vencidas
+                    const filtered = upcomingTasks
                       .map((task) => {
                         const taskDate = new Date(task.date)
                         const daysUntil = Math.ceil((taskDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
-                        return { ...task, daysUntil, taskDate }
+                        return { ...task, taskDate, daysUntil }
                       })
-                      .filter((task) => task.taskDate <= sevenDaysFromNow)
+                      .filter((t) => t.daysUntil <= 0)
                       .sort((a, b) => a.taskDate.getTime() - b.taskDate.getTime())
 
-                    return weeklyTasks.length > 0 ? (
-                      <div className="space-y-3">
-                        {weeklyTasks.map((task, i) => {
+                    if (filtered.length === 0)
+                      return (
+                        <div className="text-center py-12 text-green-600">
+                          <CheckCircle2 className="h-10 w-10 mx-auto mb-3" />
+                          <p className="font-medium">No hay tareas pendientes 🎉</p>
+                        </div>
+                      )
+
+                    return (
+                      <div className="space-y-2 print:space-y-1">
+                        {filtered.map((task, i) => {
                           const isOverdue = task.daysUntil < 0
                           const isToday = task.daysUntil === 0
 
                           return (
-                            <Card
+                            <div
                               key={i}
-                              className={`border-l-4 ${
-                                isOverdue
-                                  ? "border-l-red-500 bg-red-50"
-                                  : isToday
-                                    ? "border-l-orange-500 bg-orange-50"
-                                    : "border-l-blue-500 bg-blue-50"
+                              className={`flex flex-col md:flex-row items-start md:items-center justify-between gap-2 border rounded-xl p-3 shadow-sm transition-all ${
+                                isOverdue ? "border-red-300 bg-red-50" : "border-orange-300 bg-orange-50"
                               }`}
                             >
-                              <CardContent className="p-4">
-                                <div className="flex items-start justify-between gap-4">
-                                  <div className="flex-1 space-y-2">
-                                    <div className="flex items-center gap-2">
-                                      <h3 className="font-semibold text-slate-900">{task.type}</h3>
-                                      <Badge
-                                        variant="outline"
-                                        className={
-                                          isOverdue
-                                            ? "bg-red-100 text-red-800 border-red-300"
-                                            : isToday
-                                              ? "bg-orange-100 text-orange-800 border-orange-300"
-                                              : "bg-blue-100 text-blue-800 border-blue-300"
-                                        }
-                                      >
-                                        {isOverdue
-                                          ? `${Math.abs(task.daysUntil)} días de retraso`
-                                          : isToday
-                                            ? "Hoy"
-                                            : `En ${task.daysUntil} días`}
-                                      </Badge>
-                                    </div>
-
-                                    <div className="text-sm text-slate-600 space-y-1">
-                                      <p>
-                                        <strong>Fecha programada:</strong> {task.taskDate.toLocaleDateString("es-ES")}
-                                      </p>
-                                      {task.frequency && (
-                                        <p>
-                                          <strong>Frecuencia:</strong> {task.frequency}
-                                        </p>
-                                      )}
-                                      {task.lastCompleted && (
-                                        <p>
-                                          <strong>Última vez:</strong>{" "}
-                                          {new Date(task.lastCompleted).toLocaleDateString("es-ES")}
-                                        </p>
-                                      )}
-                                      {task.operator && (
-                                        <p>
-                                          <strong>Último operario:</strong> {task.operator}
-                                        </p>
-                                      )}
-                                    </div>
-
-                                    {task.rooms && task.rooms.length > 0 && (
-                                      <div className="mt-2">
-                                        <p className="text-sm font-medium text-slate-700 mb-1">
-                                          {task.type.includes("filtro") ? "Filtros a limpiar:" : "Habitaciones:"}
-                                        </p>
-                                        <div className="flex flex-wrap gap-1">
-                                          {task.rooms.slice(0, 10).map((room: string, idx: number) => (
-                                            <Badge key={idx} variant="secondary" className="text-xs">
-                                              {room}
-                                            </Badge>
-                                          ))}
-                                          {task.rooms.length > 10 && (
-                                            <Badge variant="secondary" className="text-xs">
-                                              +{task.rooms.length - 10} más
-                                            </Badge>
-                                          )}
-                                        </div>
-                                      </div>
-                                    )}
-                                  </div>
+                              <div className="flex items-center gap-3 flex-wrap">
+                                <div
+                                  className={`p-2 rounded-full ${
+                                    isOverdue ? "bg-red-200 text-red-800" : "bg-orange-200 text-orange-800"
+                                  }`}
+                                >
+                                  {isOverdue ? <AlertTriangle className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
                                 </div>
-                              </CardContent>
-                            </Card>
+                                <div>
+                                  <p className="font-semibold text-slate-800 leading-tight">{task.type}</p>
+                                  <p className="text-xs text-slate-600">
+                                    {isOverdue ? `Retrasada (${Math.abs(task.daysUntil)} días)` : "Hoy"}
+                                    {" • "}
+                                    {task.frequency}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="text-xs text-slate-700 space-y-1 md:text-right">
+                                {task.rooms?.length > 0 && (
+                                  <p>
+                                    <strong>Habitaciones:</strong> {task.rooms.slice(0, 6).join(", ")}
+                                    {task.rooms.length > 6 && " ..."}
+                                  </p>
+                                )}
+                                {task.operator_name && (
+                                  <p>
+                                    <strong>Último:</strong> {task.operator_name}
+                                  </p>
+                                )}
+                                {task.lastCompleted && (
+                                  <p>
+                                    <strong>Última vez:</strong>{" "}
+                                    {new Date(task.lastCompleted).toLocaleDateString("es-ES")}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
                           )
                         })}
-                      </div>
-                    ) : (
-                      <div className="text-center py-12 text-slate-500">
-                        <CheckCircle2 className="h-12 w-12 mx-auto mb-4 opacity-50 text-green-500" />
-                        <p className="font-medium">No hay tareas programadas para los próximos 7 días</p>
-                        <p className="text-sm mt-2">Todas las tareas están al día</p>
                       </div>
                     )
                   })()
                 )}
               </CardContent>
             </Card>
+
+            {/* 🔹 Estilo para impresión limpia */}
+            <style jsx global>{`
+              @media print {
+                @page {
+                  size: A4 portrait;
+                  margin: 1cm;
+                }
+                body {
+                  background: white;
+                  -webkit-print-color-adjust: exact;
+                  print-color-adjust: exact;
+                }
+                .print\\:hidden {
+                  display: none !important;
+                }
+                button,
+                header,
+                nav {
+                  display: none !important;
+                }
+                .card,
+                .Card {
+                  box-shadow: none !important;
+                  border-color: #ccc !important;
+                }
+              }
+            `}</style>
           </TabsContent>
 
           <TabsContent value="history" className="space-y-6">
