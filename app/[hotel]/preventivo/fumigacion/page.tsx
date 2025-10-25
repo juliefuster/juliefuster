@@ -34,9 +34,9 @@ export default function FumigationHistoryPage() {
   const [filteredRecords, setFilteredRecords] = useState<FumigationRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
-  const [showStatusView, setShowStatusView] = useState(true) // 👈 vista rápida primero
+  const [showStatusView, setShowStatusView] = useState(true)
   const [roomStatus, setRoomStatus] = useState<RoomStatus[]>([])
-  const [showOnlyPending, setShowOnlyPending] = useState(true) // 👈 mostrar pendientes primero
+  const [showOnlyPending, setShowOnlyPending] = useState(true)
 
   useEffect(() => {
     fetchRecords()
@@ -57,24 +57,41 @@ export default function FumigationHistoryPage() {
     setFilteredRecords(filtered)
   }, [searchTerm, records])
 
+  // 🔹 Cargar registros desde el backend
   const fetchRecords = async () => {
     try {
       setLoading(true)
+
       const response = await fetch(`/api/fumigation?hotel=${hotel}`)
-      if (!response.ok) throw new Error("Failed to fetch records")
+
+      // ✅ Aceptar tanto 200 como 201 como válidos
+      if (response.status !== 200 && response.status !== 201) {
+        const errorText = await response.text()
+        console.error("[v2] Error al obtener registros:", errorText)
+        throw new Error("Error al obtener registros de fumigación")
+      }
 
       const data = await response.json()
+
       const formatted = data.map((r: any) => {
         let parsedRooms: string[] = []
 
         if (r.rooms) {
           try {
+            // Si viene en JSON, lo parseamos
             const parsed = JSON.parse(r.rooms)
-            parsedRooms = Array.isArray(parsed) ? parsed : [r.rooms]
+            parsedRooms = Array.isArray(parsed)
+              ? parsed
+              : String(r.rooms)
+                  .split(",")
+                  .map((x) => x.trim())
+                  .filter(Boolean)
           } catch {
-            parsedRooms = r.rooms
+            // Si no es JSON, limpiamos el texto
+            parsedRooms = String(r.rooms)
+              .replace(/[\[\]"]/g, "")
               .split(",")
-              .map((room: string) => room.trim())
+              .map((x) => x.trim())
               .filter(Boolean)
           }
         }
@@ -89,16 +106,19 @@ export default function FumigationHistoryPage() {
           next_date: r.next_date || null,
         }
       })
+
+      console.log(`[v2] Registros de fumigación cargados: ${formatted.length}`)
       setRecords(formatted)
       setFilteredRecords(formatted)
       calculateRoomStatus(formatted)
     } catch (error) {
-      console.error("Error fetching fumigation records:", error)
+      console.error("💥 Error fetching fumigation records:", error)
     } finally {
       setLoading(false)
     }
   }
 
+  // 🔸 Calcular estado por habitación
   const calculateRoomStatus = (records: FumigationRecord[]) => {
     const now = new Date()
     const roomMap: Record<string, RoomStatus> = {}
@@ -136,13 +156,12 @@ export default function FumigationHistoryPage() {
     })
 
   const filteredRooms = showOnlyPending ? roomStatus.filter((r) => r.status === "pendiente") : roomStatus
-
   const totalFumigated = roomStatus.filter((r) => r.status === "fumigada").length
   const totalPending = roomStatus.filter((r) => r.status === "pendiente").length
 
   return (
     <div className="container mx-auto p-6 max-w-7xl">
-      {/* Header */}
+      {/* 🔹 Header */}
       <div className="flex items-center justify-between mb-6 print:mb-4">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={() => router.back()} className="print:hidden">
@@ -178,15 +197,14 @@ export default function FumigationHistoryPage() {
         </div>
       </div>
 
-      {/* Vista rápida (por defecto) */}
-      {showStatusView && (
+      {/* 🔹 Vista rápida */}
+      {showStatusView ? (
         <Card>
           <CardHeader>
             <CardTitle>Estado de Fumigaciones por Habitación</CardTitle>
             <CardDescription>Visualiza qué habitaciones están fumigadas o pendientes</CardDescription>
           </CardHeader>
           <CardContent>
-            {/* 🔸 Resumen arriba */}
             <div className="flex flex-wrap items-center justify-center gap-6 mb-6">
               <div className="flex items-center gap-2 text-green-700 bg-green-50 border border-green-200 px-4 py-2 rounded-lg shadow-sm">
                 <CheckCircle2 className="h-5 w-5 text-green-600" />
@@ -214,73 +232,66 @@ export default function FumigationHistoryPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredRooms.map((room) => {
-                      const totalCycle = 90
-                      const days = Math.min(room.days, totalCycle)
-                      const percentage = room.status === "fumigada" ? ((totalCycle - days) / totalCycle) * 100 : 100
-
-                      return (
-                        <TableRow key={room.room}>
-                          <TableCell className="font-medium">{room.room}</TableCell>
-                          <TableCell>
-                            {room.status === "fumigada" ? (
-                              <span className="flex items-center text-green-700 font-medium">
-                                <CheckCircle2 className="h-4 w-4 mr-1 text-green-600" /> Fumigada
-                              </span>
-                            ) : (
-                              <span className="flex items-center text-red-700 font-medium">
-                                <AlertTriangle className="h-4 w-4 mr-1 text-red-600" /> Pendiente
-                              </span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            {room.next_date
-                              ? new Date(room.next_date).toLocaleDateString("es-ES", {
-                                  day: "2-digit",
-                                  month: "short",
-                                })
-                              : "—"}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex flex-col gap-1">
-                              <div className="w-full h-2 rounded-full bg-slate-200 overflow-hidden">
-                                <div
-                                  className={`h-full transition-all duration-500 ${
-                                    room.status === "fumigada" ? "bg-green-500" : "bg-red-500"
-                                  }`}
-                                  style={{
-                                    width: room.status === "fumigada" ? `${100 - percentage}%` : "100%",
-                                  }}
-                                />
-                              </div>
-                              <div className="text-xs text-slate-600 flex justify-between">
-                                {room.status === "fumigada" ? (
-                                  <>
-                                    <span>🪳 Próx. en</span>
-                                    <span className="font-semibold text-green-700">{room.days} días</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <span>⚠️ Retraso</span>
-                                    <span className="font-semibold text-red-700">{room.days} días</span>
-                                  </>
-                                )}
-                              </div>
+                    {filteredRooms.map((room) => (
+                      <TableRow key={room.room}>
+                        <TableCell className="font-medium">{room.room}</TableCell>
+                        <TableCell>
+                          {room.status === "fumigada" ? (
+                            <span className="flex items-center text-green-700 font-medium">
+                              <CheckCircle2 className="h-4 w-4 mr-1 text-green-600" /> Fumigada
+                            </span>
+                          ) : (
+                            <span className="flex items-center text-red-700 font-medium">
+                              <AlertTriangle className="h-4 w-4 mr-1 text-red-600" /> Pendiente
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {room.next_date
+                            ? new Date(room.next_date).toLocaleDateString("es-ES", {
+                                day: "2-digit",
+                                month: "short",
+                              })
+                            : "—"}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-col gap-1">
+                            <div className="w-full h-2 rounded-full bg-slate-200 overflow-hidden">
+                              <div
+                                className={`h-full transition-all duration-500 ${
+                                  room.status === "fumigada" ? "bg-green-500" : "bg-red-500"
+                                }`}
+                                style={{
+                                  width: room.status === "fumigada"
+                                    ? `${100 - (room.days / 90) * 100}%`
+                                    : "100%",
+                                }}
+                              />
                             </div>
-                          </TableCell>
-                        </TableRow>
-                      )
-                    })}
+                            <div className="text-xs text-slate-600 flex justify-between">
+                              {room.status === "fumigada" ? (
+                                <>
+                                  <span>🪳 Próx. en</span>
+                                  <span className="font-semibold text-green-700">{room.days} días</span>
+                                </>
+                              ) : (
+                                <>
+                                  <span>⚠️ Retraso</span>
+                                  <span className="font-semibold text-red-700">{room.days} días</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
                   </TableBody>
                 </Table>
               </div>
             )}
           </CardContent>
         </Card>
-      )}
-
-      {/* Historial */}
-      {!showStatusView && (
+      ) : (
         <>
           <Card className="p-4 mb-6 print:hidden">
             <div className="flex items-center gap-3">
@@ -344,7 +355,7 @@ export default function FumigationHistoryPage() {
         </>
       )}
 
-      {/* Estilo impresión */}
+      {/* 🔹 Estilos de impresión */}
       <style jsx global>{`
         @media print {
           @page {
