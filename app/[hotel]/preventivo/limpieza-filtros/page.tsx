@@ -5,14 +5,7 @@ import { useParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import {
-  ArrowLeft,
-  Printer,
-  Eye,
-  CheckCircle2,
-  AlertTriangle,
-  Filter,
-} from "lucide-react"
+import { ArrowLeft, Printer, Eye, CheckCircle2, AlertTriangle, Filter } from "lucide-react"
 
 interface FilterCleaningRecord {
   id: string
@@ -38,9 +31,9 @@ export default function FilterCleaningHistoryPage() {
 
   const [records, setRecords] = useState<FilterCleaningRecord[]>([])
   const [loading, setLoading] = useState(true)
-  const [showStatusView, setShowStatusView] = useState(false)
+  const [showStatusView, setShowStatusView] = useState(true) // 👈 Vista rápida primero
   const [roomStatus, setRoomStatus] = useState<RoomStatus[]>([])
-  const [showOnlyDirty, setShowOnlyDirty] = useState(false)
+  const [showOnlyDirty, setShowOnlyDirty] = useState(true) // 👈 Mostrar solo sucias por defecto
 
   useEffect(() => {
     fetchRecords()
@@ -123,10 +116,6 @@ export default function FilterCleaningHistoryPage() {
         </div>
 
         <div className="flex gap-2 print:hidden">
-          <Button variant="outline" onClick={() => setShowStatusView(!showStatusView)}>
-            <Eye className="h-4 w-4 mr-2" />
-            {showStatusView ? "Ver Historial" : "Vista rápida"}
-          </Button>
           {showStatusView && (
             <Button
               variant={showOnlyDirty ? "default" : "outline"}
@@ -136,6 +125,10 @@ export default function FilterCleaningHistoryPage() {
               {showOnlyDirty ? "Ver todas" : "Ver solo sucias"}
             </Button>
           )}
+          <Button variant="outline" onClick={() => setShowStatusView(!showStatusView)}>
+            <Eye className="h-4 w-4 mr-2" />
+            {showStatusView ? "Ver Historial" : "Vista rápida"}
+          </Button>
           <Button onClick={handlePrint}>
             <Printer className="h-4 w-4 mr-2" />
             Imprimir
@@ -143,66 +136,7 @@ export default function FilterCleaningHistoryPage() {
         </div>
       </div>
 
-      {/* 🔹 HISTORIAL NORMAL */}
-      {!showStatusView && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Registros de Limpieza</CardTitle>
-            <CardDescription>
-              Historial completo de limpiezas de filtros de aire acondicionado
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="text-center py-8 text-muted-foreground">Cargando registros...</div>
-            ) : records.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                No hay registros de limpieza de filtros
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Fecha</TableHead>
-                      <TableHead>Operario</TableHead>
-                      <TableHead>Filtros Limpiados</TableHead>
-                      <TableHead>Observaciones</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {records.map((record) => (
-                      <TableRow key={record.id}>
-                        <TableCell className="whitespace-nowrap">
-                          {formatDate(record.created_at)}
-                        </TableCell>
-                        <TableCell>{record.operator_name}</TableCell>
-                        <TableCell>
-                          <div className="flex flex-wrap gap-1">
-                            {record.cleaned_filters.map((filter, index) => (
-                              <span
-                                key={index}
-                                className="inline-flex items-center px-2 py-1 rounded-md bg-blue-100 text-blue-800 text-xs font-medium"
-                              >
-                                {filter}
-                              </span>
-                            ))}
-                          </div>
-                        </TableCell>
-                        <TableCell className="max-w-xs">
-                          {record.observations || "-"}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* 🔹 VISTA RÁPIDA DE ESTADO DE HABITACIONES */}
+      {/* 🔹 VISTA RÁPIDA DE ESTADO DE FILTROS (por defecto) */}
       {showStatusView && (
         <Card>
           <CardHeader>
@@ -212,19 +146,15 @@ export default function FilterCleaningHistoryPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {/* 🔸 Resumen arriba */}
+            {/* 🔸 Resumen */}
             <div className="flex flex-wrap items-center justify-center gap-6 mb-6">
               <div className="flex items-center gap-2 text-green-700 bg-green-50 border border-green-200 px-4 py-2 rounded-lg shadow-sm">
                 <CheckCircle2 className="h-5 w-5 text-green-600" />
-                <span className="text-sm font-medium">
-                  {totalClean} habitaciones limpias
-                </span>
+                <span className="text-sm font-medium">{totalClean} habitaciones limpias</span>
               </div>
               <div className="flex items-center gap-2 text-red-700 bg-red-50 border border-red-200 px-4 py-2 rounded-lg shadow-sm">
                 <AlertTriangle className="h-5 w-5 text-red-600" />
-                <span className="text-sm font-medium">
-                  {totalDirty} habitaciones sucias
-                </span>
+                <span className="text-sm font-medium">{totalDirty} habitaciones sucias</span>
               </div>
             </div>
 
@@ -281,7 +211,7 @@ export default function FilterCleaningHistoryPage() {
                               : "-"}
                           </TableCell>
 
-                          {/* Visualización de días */}
+                          {/* Días */}
                           <TableCell>
                             <div className="flex flex-col gap-1">
                               <div className="w-full h-2 rounded-full bg-slate-200 overflow-hidden">
@@ -301,16 +231,12 @@ export default function FilterCleaningHistoryPage() {
                                 {room.status === "limpia" ? (
                                   <>
                                     <span>🧼 Faltan</span>
-                                    <span className="font-semibold text-green-700">
-                                      {room.days} días
-                                    </span>
+                                    <span className="font-semibold text-green-700">{room.days} días</span>
                                   </>
                                 ) : (
                                   <>
                                     <span>⚠️ Retraso</span>
-                                    <span className="font-semibold text-red-700">
-                                      {room.days} días
-                                    </span>
+                                    <span className="font-semibold text-red-700">{room.days} días</span>
                                   </>
                                 )}
                               </div>
@@ -319,6 +245,61 @@ export default function FilterCleaningHistoryPage() {
                         </TableRow>
                       )
                     })}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 🔹 HISTORIAL DE LIMPIEZAS */}
+      {!showStatusView && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Registros de Limpieza</CardTitle>
+            <CardDescription>
+              Historial completo de limpiezas de filtros de aire acondicionado
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <div className="text-center py-8 text-muted-foreground">Cargando registros...</div>
+            ) : records.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                No hay registros de limpieza de filtros
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Fecha</TableHead>
+                      <TableHead>Operario</TableHead>
+                      <TableHead>Filtros Limpiados</TableHead>
+                      <TableHead>Observaciones</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {records.map((record) => (
+                      <TableRow key={record.id}>
+                        <TableCell className="whitespace-nowrap">{formatDate(record.created_at)}</TableCell>
+                        <TableCell>{record.operator_name}</TableCell>
+                        <TableCell>
+                          <div className="flex flex-wrap gap-1">
+                            {record.cleaned_filters.map((filter, index) => (
+                              <span
+                                key={index}
+                                className="inline-flex items-center px-2 py-1 rounded-md bg-blue-100 text-blue-800 text-xs font-medium"
+                              >
+                                {filter}
+                              </span>
+                            ))}
+                          </div>
+                        </TableCell>
+                        <TableCell className="max-w-xs">{record.observations || "-"}</TableCell>
+                      </TableRow>
+                    ))}
                   </TableBody>
                 </Table>
               </div>

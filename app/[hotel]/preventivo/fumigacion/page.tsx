@@ -34,9 +34,9 @@ export default function FumigationHistoryPage() {
   const [filteredRecords, setFilteredRecords] = useState<FumigationRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
-  const [showStatusView, setShowStatusView] = useState(false)
+  const [showStatusView, setShowStatusView] = useState(true) // 👈 vista rápida primero
   const [roomStatus, setRoomStatus] = useState<RoomStatus[]>([])
-  const [showOnlyPending, setShowOnlyPending] = useState(false)
+  const [showOnlyPending, setShowOnlyPending] = useState(true) // 👈 mostrar pendientes primero
 
   useEffect(() => {
     fetchRecords()
@@ -68,12 +68,10 @@ export default function FumigationHistoryPage() {
         let parsedRooms: string[] = []
 
         if (r.rooms) {
-          // Try to parse as JSON array first
           try {
             const parsed = JSON.parse(r.rooms)
             parsedRooms = Array.isArray(parsed) ? parsed : [r.rooms]
           } catch {
-            // If not JSON, treat as comma-separated string
             parsedRooms = r.rooms
               .split(",")
               .map((room: string) => room.trim())
@@ -160,10 +158,6 @@ export default function FumigationHistoryPage() {
         </div>
 
         <div className="flex gap-2 print:hidden">
-          <Button variant="outline" onClick={() => setShowStatusView(!showStatusView)}>
-            <Eye className="h-4 w-4 mr-2" />
-            {showStatusView ? "Ver Historial" : "Vista rápida"}
-          </Button>
           {showStatusView && (
             <Button
               variant={showOnlyPending ? "default" : "outline"}
@@ -173,6 +167,10 @@ export default function FumigationHistoryPage() {
               {showOnlyPending ? "Ver todas" : "Ver solo pendientes"}
             </Button>
           )}
+          <Button variant="outline" onClick={() => setShowStatusView(!showStatusView)}>
+            <Eye className="h-4 w-4 mr-2" />
+            {showStatusView ? "Ver Historial" : "Vista rápida"}
+          </Button>
           <Button onClick={handlePrint}>
             <Printer className="h-4 w-4 mr-2" />
             Imprimir
@@ -180,73 +178,7 @@ export default function FumigationHistoryPage() {
         </div>
       </div>
 
-      {/* Buscador */}
-      {!showStatusView && (
-        <Card className="p-4 mb-6 print:hidden">
-          <div className="flex items-center gap-3">
-            <Search className="h-5 w-5 text-slate-500" />
-            <Input
-              placeholder="Buscar por operario, habitación u observación..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="flex-1"
-            />
-          </div>
-        </Card>
-      )}
-
-      {/* Tabla normal */}
-      {!showStatusView && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Registros de Fumigación</CardTitle>
-            <CardDescription>Historial completo de fumigaciones realizadas</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="text-center py-8 text-muted-foreground">Cargando registros...</div>
-            ) : filteredRecords.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">No se encontraron registros</div>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Fecha</TableHead>
-                      <TableHead>Operario</TableHead>
-                      <TableHead>Habitaciones</TableHead>
-                      <TableHead>Observaciones</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredRecords.map((record) => (
-                      <TableRow key={record.id}>
-                        <TableCell>{formatDate(record.date)}</TableCell>
-                        <TableCell>{record.operator_name}</TableCell>
-                        <TableCell>
-                          <div className="flex flex-wrap gap-1">
-                            {record.rooms.map((r, i) => (
-                              <span
-                                key={i}
-                                className="inline-flex items-center px-2 py-1 rounded-md bg-purple-100 text-purple-800 text-xs font-medium"
-                              >
-                                {r}
-                              </span>
-                            ))}
-                          </div>
-                        </TableCell>
-                        <TableCell>{record.observations || "—"}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Vista rápida */}
+      {/* Vista rápida (por defecto) */}
       {showStatusView && (
         <Card>
           <CardHeader>
@@ -345,6 +277,71 @@ export default function FumigationHistoryPage() {
             )}
           </CardContent>
         </Card>
+      )}
+
+      {/* Historial */}
+      {!showStatusView && (
+        <>
+          <Card className="p-4 mb-6 print:hidden">
+            <div className="flex items-center gap-3">
+              <Search className="h-5 w-5 text-slate-500" />
+              <Input
+                placeholder="Buscar por operario, habitación u observación..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="flex-1"
+              />
+            </div>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Registros de Fumigación</CardTitle>
+              <CardDescription>Historial completo de fumigaciones realizadas</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div className="text-center py-8 text-muted-foreground">Cargando registros...</div>
+              ) : filteredRecords.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">No se encontraron registros</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Fecha</TableHead>
+                        <TableHead>Operario</TableHead>
+                        <TableHead>Habitaciones</TableHead>
+                        <TableHead>Observaciones</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredRecords.map((record) => (
+                        <TableRow key={record.id}>
+                          <TableCell>{formatDate(record.date)}</TableCell>
+                          <TableCell>{record.operator_name}</TableCell>
+                          <TableCell>
+                            <div className="flex flex-wrap gap-1">
+                              {record.rooms.map((r, i) => (
+                                <span
+                                  key={i}
+                                  className="inline-flex items-center px-2 py-1 rounded-md bg-purple-100 text-purple-800 text-xs font-medium"
+                                >
+                                  {r}
+                                </span>
+                              ))}
+                            </div>
+                          </TableCell>
+                          <TableCell>{record.observations || "—"}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </>
       )}
 
       {/* Estilo impresión */}
