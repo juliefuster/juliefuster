@@ -38,10 +38,12 @@ export default function FumigationHistoryPage() {
   const [roomStatus, setRoomStatus] = useState<RoomStatus[]>([])
   const [showOnlyPending, setShowOnlyPending] = useState(true)
 
+  // 🔹 Cargar registros al montar
   useEffect(() => {
     fetchRecords()
   }, [hotel])
 
+  // 🔹 Filtro por búsqueda
   useEffect(() => {
     if (!searchTerm.trim()) {
       setFilteredRecords(records)
@@ -61,40 +63,28 @@ export default function FumigationHistoryPage() {
   const fetchRecords = async () => {
     try {
       setLoading(true)
-
       const response = await fetch(`/api/fumigation?hotel=${hotel}`)
-
-      // ✅ Aceptar tanto 200 como 201 como válidos
-      if (response.status !== 200 && response.status !== 201) {
-        const errorText = await response.text()
-        console.error("[v2] Error al obtener registros:", errorText)
-        throw new Error("Error al obtener registros de fumigación")
-      }
+      if (!response.ok) throw new Error(`Error HTTP ${response.status}`)
 
       const data = await response.json()
+      if (!Array.isArray(data)) throw new Error("Formato de datos inválido")
 
       const formatted = data.map((r: any) => {
         let parsedRooms: string[] = []
 
-        if (r.rooms) {
-          try {
-            // Si viene en JSON, lo parseamos
-            const parsed = JSON.parse(r.rooms)
-            parsedRooms = Array.isArray(parsed)
-              ? parsed
-              : String(r.rooms)
-                  .split(",")
-                  .map((x) => x.trim())
-                  .filter(Boolean)
-          } catch {
-            // Si no es JSON, limpiamos el texto
-            parsedRooms = String(r.rooms)
-              .replace(/[\[\]"]/g, "")
-              .split(",")
-              .map((x) => x.trim())
-              .filter(Boolean)
-          }
+        if (Array.isArray(r.rooms)) {
+          // Already an array from jsonb
+          parsedRooms = r.rooms.map(String).filter(Boolean)
+        } else if (typeof r.rooms === "string") {
+          // Legacy string format: "503, 504, 505"
+          parsedRooms = r.rooms
+            .replace(/[[\]"]/g, "")
+            .split(",")
+            .map((x) => x.trim())
+            .filter(Boolean)
         }
+
+        console.log("[v0] Parsed rooms for record:", { id: r.id, rooms: r.rooms, parsedRooms })
 
         return {
           id: r.id,
@@ -107,7 +97,7 @@ export default function FumigationHistoryPage() {
         }
       })
 
-      console.log(`[v2] Registros de fumigación cargados: ${formatted.length}`)
+      console.log(`[v0] Registros de fumigación cargados: ${formatted.length}`)
       setRecords(formatted)
       setFilteredRecords(formatted)
       calculateRoomStatus(formatted)
@@ -211,7 +201,7 @@ export default function FumigationHistoryPage() {
                 <span className="text-sm font-medium">{totalFumigated} habitaciones fumigadas</span>
               </div>
               <div className="flex items-center gap-2 text-red-700 bg-red-50 border border-red-200 px-4 py-2 rounded-lg shadow-sm">
-                <AlertTriangle className="h-5 w-5 text-red-600" />
+                <AlertTriangle className="h-4 w-4 mr-1 text-red-600" />
                 <span className="text-sm font-medium">{totalPending} habitaciones pendientes</span>
               </div>
             </div>
@@ -262,9 +252,7 @@ export default function FumigationHistoryPage() {
                                   room.status === "fumigada" ? "bg-green-500" : "bg-red-500"
                                 }`}
                                 style={{
-                                  width: room.status === "fumigada"
-                                    ? `${100 - (room.days / 90) * 100}%`
-                                    : "100%",
+                                  width: room.status === "fumigada" ? `${100 - (room.days / 90) * 100}%` : "100%",
                                 }}
                               />
                             </div>

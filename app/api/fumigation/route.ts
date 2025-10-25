@@ -22,7 +22,8 @@ export async function GET(request: NextRequest) {
       throw error
     }
 
-    return NextResponse.json({ records: data || [] })
+    console.log("[v0] Fumigation records fetched:", data?.length || 0)
+    return NextResponse.json(data || [])
   } catch (error) {
     console.error("[v0] Error in GET /api/fumigation:", error)
     return NextResponse.json({ error: "Failed to fetch fumigation records" }, { status: 500 })
@@ -41,20 +42,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing required fields: hotel, date, operator_name" }, { status: 400 })
     }
 
-    let roomsToStore: string
+    let roomsArray: string[]
     if (Array.isArray(rooms)) {
-      roomsToStore = rooms.join(", ")
+      roomsArray = rooms
     } else if (typeof rooms === "string") {
-      roomsToStore = rooms
+      // Split comma-separated string into array
+      roomsArray = rooms
+        .split(",")
+        .map((r) => r.trim())
+        .filter(Boolean)
     } else {
-      roomsToStore = ""
+      roomsArray = []
     }
 
     console.log("[v0] Creating fumigation record:", {
       hotel,
       date,
       operator_name,
-      rooms: roomsToStore,
+      rooms: roomsArray,
       observations,
     })
 
@@ -65,7 +70,7 @@ export async function POST(request: NextRequest) {
           hotel,
           date,
           operator_name,
-          rooms: roomsToStore,
+          rooms: roomsArray, // Store as JSON array
           observations: observations || null,
         },
       ])
