@@ -22,8 +22,33 @@ export async function GET(request: NextRequest) {
       throw error
     }
 
-    console.log("[v0] Fumigation records fetched:", data?.length || 0)
-    return NextResponse.json(data || [])
+    const recordsWithStatus =
+      data?.map((record, index) => {
+        // Find the previous fumigation (next in the array since we're sorted descending)
+        const previousRecord = data[index + 1]
+
+        let diferencia_dias: number | null = null
+        let estado: "adelantada" | "correcta" | null = null
+
+        if (previousRecord) {
+          const currentDate = new Date(record.date)
+          const previousDate = new Date(previousRecord.date)
+          const diffTime = currentDate.getTime() - previousDate.getTime()
+          diferencia_dias = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+
+          // Determine status based on 90-day cycle
+          estado = diferencia_dias < 90 ? "adelantada" : "correcta"
+        }
+
+        return {
+          ...record,
+          diferencia_dias,
+          estado,
+        }
+      }) || []
+
+    console.log("[v0] Fumigation records fetched:", recordsWithStatus.length)
+    return NextResponse.json(recordsWithStatus)
   } catch (error) {
     console.error("[v0] Error in GET /api/fumigation:", error)
     return NextResponse.json({ error: "Failed to fetch fumigation records" }, { status: 500 })

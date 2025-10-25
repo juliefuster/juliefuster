@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { ArrowLeft, Printer, Eye, Bug, Search, CheckCircle2, AlertTriangle, Filter } from "lucide-react"
+import { ArrowLeft, Printer, Eye, Bug, Search, CheckCircle2, AlertTriangle, Filter, Clock } from "lucide-react"
 
 interface FumigationRecord {
   id: string
@@ -16,6 +16,8 @@ interface FumigationRecord {
   observations: string | null
   rooms: string[]
   next_date?: string | null
+  diferencia_dias?: number | null
+  estado?: "adelantada" | "correcta" | null
 }
 
 interface RoomStatus {
@@ -94,6 +96,8 @@ export default function FumigationHistoryPage() {
           observations: r.observations || null,
           rooms: parsedRooms,
           next_date: r.next_date || null,
+          diferencia_dias: r.diferencia_dias || null,
+          estado: r.estado || null,
         }
       })
 
@@ -311,6 +315,9 @@ export default function FumigationHistoryPage() {
                         <TableHead>Fecha</TableHead>
                         <TableHead>Operario</TableHead>
                         <TableHead>Habitaciones</TableHead>
+                        <TableHead>Próxima Fecha</TableHead>
+                        <TableHead>Días desde anterior</TableHead>
+                        <TableHead>Estado</TableHead>
                         <TableHead>Observaciones</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -330,6 +337,40 @@ export default function FumigationHistoryPage() {
                                 </span>
                               ))}
                             </div>
+                          </TableCell>
+                          <TableCell>
+                            {record.next_date
+                              ? new Date(record.next_date).toLocaleDateString("es-ES", {
+                                  day: "2-digit",
+                                  month: "short",
+                                  year: "numeric",
+                                })
+                              : "—"}
+                          </TableCell>
+                          <TableCell>
+                            {record.diferencia_dias !== null && record.diferencia_dias !== undefined ? (
+                              <span className="flex items-center gap-1">
+                                <Clock className="h-4 w-4 text-slate-500" />
+                                {record.diferencia_dias} días
+                              </span>
+                            ) : (
+                              <span className="text-slate-400">Primera fumigación</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {record.estado === "adelantada" ? (
+                              <span className="inline-flex items-center px-2 py-1 rounded-md bg-orange-100 text-orange-800 text-xs font-medium">
+                                <AlertTriangle className="h-3 w-3 mr-1" />
+                                Adelantada
+                              </span>
+                            ) : record.estado === "correcta" ? (
+                              <span className="inline-flex items-center px-2 py-1 rounded-md bg-green-100 text-green-800 text-xs font-medium">
+                                <CheckCircle2 className="h-3 w-3 mr-1" />
+                                Correcta
+                              </span>
+                            ) : (
+                              <span className="text-slate-400">—</span>
+                            )}
                           </TableCell>
                           <TableCell>{record.observations || "—"}</TableCell>
                         </TableRow>

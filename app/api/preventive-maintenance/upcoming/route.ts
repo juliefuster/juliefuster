@@ -46,6 +46,17 @@ export async function GET(request: NextRequest) {
       console.error("[v0] Error fetching pump changes:", pumpError)
     }
 
+    const { data: monthlyTasks, error: monthlyError } = await supabase
+      .from("monthly_task_records")
+      .select("id, date, next_date, task_name, operator_name, observations")
+      .eq("hotel", hotel)
+      .not("next_date", "is", null)
+      .order("date", { ascending: false })
+
+    if (monthlyError) {
+      console.error("[v0] Error fetching monthly tasks:", monthlyError)
+    }
+
     const upcomingTasks = []
 
     if (fumigations && fumigations.length > 0) {
@@ -158,6 +169,43 @@ export async function GET(request: NextRequest) {
             operator: pump.operator_name,
             frequency: "Semanal",
             pumpNumber: pump.pump_number,
+          })
+        }
+      })
+    }
+
+    if (monthlyTasks && monthlyTasks.length > 0) {
+      // Group by task_name and find the most recent record for each task
+      const taskLastCompletion: Record<string, { date: Date; nextDate: Date; operator: string }> = {}
+
+      monthlyTasks.forEach((task) => {
+        const taskDate = new Date(task.date)
+        const nextDate = new Date(task.next_date)
+
+        if (!taskLastCompletion[task.task_name] || taskDate > taskLastCompletion[task.task_name].date) {
+          taskLastCompletion[task.task_name] = {
+            date: taskDate,
+            nextDate: nextDate,
+            operator: task.operator_name,
+          }
+        }
+      })
+
+      console.log("[v0] Monthly tasks processed:", Object.keys(taskLastCompletion).length)
+
+      // Add tasks that are due within next 7 days or overdue
+      Object.entries(taskLastCompletion).forEach(([taskName, info]) => {
+        const diffDays = Math.ceil((info.nextDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+
+        // Include if overdue OR within next 7 days
+        if (diffDays <= 7) {
+          upcomingTasks.push({
+            type: `Tarea mensual: ${taskName}`,
+            date: info.nextDate.toISOString().split("T")[0],
+            lastCompleted: info.date.toISOString().split("T")[0],
+            operator: info.operator,
+            frequency: "Mensual (30 días)",
+            taskName: taskName,
           })
         }
       })
