@@ -741,82 +741,117 @@ export default function PreventiveMaintenance() {
         </Tabs>
       </main>
 
-      {/* Pump Change Dialog */}
-      <Dialog open={pumpDialogOpen} onOpenChange={setPumpDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Registrar Cambio de Bomba</DialogTitle>
-            <DialogDescription>Selecciona la bomba cambiada e ingresa los detalles</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label>Selecciona la Bomba</Label>
-              <div className="grid grid-cols-2 gap-2 mt-2">
-                <Button
-                  variant={selectedPump === 1 ? "default" : "outline"}
-                  onClick={() => setSelectedPump(1)}
-                  className="w-full"
-                >
-                  Bomba 1
-                </Button>
-                <Button
-                  variant={selectedPump === 2 ? "default" : "outline"}
-                  onClick={() => setSelectedPump(2)}
-                  className="w-full"
-                >
-                  Bomba 2
-                </Button>
-              </div>
-            </div>
-            <div>
-              <Label htmlFor="operator">Nombre del Operario *</Label>
-              <Input
-                id="operator"
-                value={operatorName}
-                onChange={(e) => setOperatorName(e.target.value)}
-                placeholder="Ingresa el nombre"
-              />
-            </div>
-            <div>
-              <Label>¿Purga realizada? *</Label>
-              <div className="grid grid-cols-2 gap-2 mt-2">
-                <Button
-                  variant={purgePerformed === true ? "default" : "outline"}
-                  onClick={() => setPurgePerformed(true)}
-                  className="w-full"
-                >
-                  Sí
-                </Button>
-                <Button
-                  variant={purgePerformed === false ? "default" : "outline"}
-                  onClick={() => setPurgePerformed(false)}
-                  className="w-full"
-                >
-                  No
-                </Button>
-              </div>
-            </div>
-            <div>
-              <Label htmlFor="observations">Observaciones</Label>
-              <Textarea
-                id="observations"
-                value={observations}
-                onChange={(e) => setObservations(e.target.value)}
-                placeholder="Observaciones opcionales"
-                rows={3}
-              />
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setPumpDialogOpen(false)} className="flex-1">
-                Cancelar
-              </Button>
-              <Button onClick={handlePumpChangeSubmit} className="flex-1">
-                Guardar
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+    {/* 💧 Pump Change Dialog (espaciado corregido y scroll en móvil) */}
+<Dialog open={pumpDialogOpen} onOpenChange={setPumpDialogOpen}>
+  <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
+    <DialogHeader className="space-y-1">
+      <DialogTitle className="text-lg font-semibold text-slate-900">
+        Registrar Cambio de Bomba
+      </DialogTitle>
+      <DialogDescription className="text-slate-600">
+        Selecciona la bomba cambiada e ingresa los detalles del mantenimiento realizado.
+      </DialogDescription>
+    </DialogHeader>
+
+    {/* 🔹 Contenido con más espacio visual */}
+    <div className="space-y-5 mt-4">
+      {/* Selección de bomba */}
+      <div className="space-y-2">
+        <Label className="font-medium text-sm text-slate-800">Selecciona la Bomba *</Label>
+        <div className="grid grid-cols-2 gap-3">
+          <Button
+            variant={selectedPump === 1 ? "default" : "outline"}
+            onClick={() => setSelectedPump(1)}
+            className="w-full"
+          >
+            Bomba 1
+          </Button>
+          <Button
+            variant={selectedPump === 2 ? "default" : "outline"}
+            onClick={() => setSelectedPump(2)}
+            className="w-full"
+          >
+            Bomba 2
+          </Button>
+        </div>
+      </div>
+
+      {/* Responsable */}
+      <div className="space-y-2">
+        <Label htmlFor="operator" className="font-medium text-sm text-slate-800">
+          Nombre del Operario *
+        </Label>
+        <select
+          id="operator"
+          value={operatorName}
+          onChange={(e) => setOperatorName(e.target.value)}
+          className="w-full border border-slate-300 rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+        >
+          <option value="">Seleccionar operario...</option>
+          <option value="xavi">Xavi</option>
+          <option value="john">John</option>
+          <option value="julie">Julie</option>
+          <option value="antonia">Antonia</option>
+          <option value="xavi/john">Xavi/John</option>
+        </select>
+      </div>
+
+      {/* Purga */}
+      <div className="space-y-2">
+        <Label className="font-medium text-sm text-slate-800">¿Purga realizada? *</Label>
+        <div className="grid grid-cols-2 gap-3">
+          <Button
+            variant={purgePerformed === true ? "default" : "outline"}
+            onClick={() => setPurgePerformed(true)}
+            className="w-full"
+          >
+            Sí
+          </Button>
+          <Button
+            variant={purgePerformed === false ? "default" : "outline"}
+            onClick={() => setPurgePerformed(false)}
+            className="w-full"
+          >
+            No
+          </Button>
+        </div>
+      </div>
+
+      {/* Observaciones */}
+      <div className="space-y-2">
+        <Label htmlFor="observations" className="font-medium text-sm text-slate-800">
+          Observaciones
+        </Label>
+        <Textarea
+          id="observations"
+          value={observations}
+          onChange={(e) => setObservations(e.target.value)}
+          placeholder="Observaciones opcionales sobre el cambio o el estado de la bomba"
+          rows={4}
+          className="resize-none"
+        />
+      </div>
+
+      {/* Botones */}
+      <div className="flex gap-2 pt-3">
+        <Button
+          variant="outline"
+          onClick={() => setPumpDialogOpen(false)}
+          className="flex-1"
+        >
+          Cancelar
+        </Button>
+        <Button
+          onClick={handlePumpChangeSubmit}
+          className="flex-1 bg-blue-600 hover:bg-blue-700"
+        >
+          Guardar
+        </Button>
+      </div>
+    </div>
+  </DialogContent>
+</Dialog>
+
 
       {/* 🐞 Fumigation Dialog (mejorado con más espacio y estilo coherente) */}
       <Dialog open={fumigationDialogOpen} onOpenChange={setFumigationDialogOpen}>
@@ -878,13 +913,19 @@ export default function PreventiveMaintenance() {
               <Label htmlFor="fumigation-operator" className="font-medium text-sm text-slate-800">
                 Responsable *
               </Label>
-              <Input
+              <select
                 id="fumigation-operator"
                 value={operatorName}
                 onChange={(e) => setOperatorName(e.target.value)}
-                placeholder="Nombre del responsable o empresa"
-                className="w-full"
-              />
+                className="w-full border border-slate-300 rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              >
+                <option value="">Seleccionar operario...</option>
+                <option value="xavi">Xavi</option>
+                <option value="john">John</option>
+                <option value="julie">Julie</option>
+                <option value="antonia">Antonia</option>
+                <option value="xavi/john">Xavi/John</option>
+              </select>
             </div>
 
             {/* Observaciones */}
@@ -975,13 +1016,19 @@ export default function PreventiveMaintenance() {
               <Label htmlFor="filter-operator" className="font-medium text-sm text-slate-800">
                 Responsable *
               </Label>
-              <Input
+              <select
                 id="filter-operator"
                 value={operatorName}
                 onChange={(e) => setOperatorName(e.target.value)}
-                placeholder="Nombre del responsable"
-                className="w-full"
-              />
+                className="w-full border border-slate-300 rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              >
+                <option value="">Seleccionar operario...</option>
+                <option value="xavi">Xavi</option>
+                <option value="john">John</option>
+                <option value="julie">Julie</option>
+                <option value="antonia">Antonia</option>
+                <option value="xavi/john">Xavi/John</option>
+              </select>
             </div>
 
             {/* Observaciones */}
@@ -1087,13 +1134,19 @@ export default function PreventiveMaintenance() {
               <Label htmlFor="generic-operator" className="font-medium text-sm text-slate-800">
                 Responsable *
               </Label>
-              <Input
+              <select
                 id="generic-operator"
                 value={genericOperator}
                 onChange={(e) => setGenericOperator(e.target.value)}
-                placeholder="Nombre del responsable"
-                className="w-full"
-              />
+                className="w-full border border-slate-300 rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              >
+                <option value="">Seleccionar operario...</option>
+                <option value="xavi">Xavi</option>
+                <option value="john">John</option>
+                <option value="julie">Julie</option>
+                <option value="antonia">Antonia</option>
+                <option value="xavi/john">Xavi/John</option>
+              </select>
             </div>
 
             <div className="space-y-2">
