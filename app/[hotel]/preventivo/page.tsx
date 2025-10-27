@@ -78,6 +78,11 @@ export default function PreventiveMaintenance() {
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [roomSearchQuery, setRoomSearchQuery] = useState("")
 
+  const [showerGroutDialogOpen, setShowerGroutDialogOpen] = useState(false)
+  const [showerGroutType, setShowerGroutType] = useState("")
+  const [showerGroutDate, setShowerGroutDate] = useState(new Date().toISOString().split("T")[0])
+  const [lastShowerGrout, setLastShowerGrout] = useState<string | null>(null)
+
   const normalizedHotel = typeof hotel === "string" ? hotel.toLowerCase().trim() : ""
   const rooms = ROOM_NUMBERS[normalizedHotel as keyof typeof ROOM_NUMBERS] ?? ROOM_NUMBERS["caledonian"] // fallback temporal
 
@@ -121,6 +126,12 @@ export default function PreventiveMaintenance() {
         if (filterRes.ok) {
           const filterData = await filterRes.json()
           setLastFilterCleaning(filterData.lastDate)
+        }
+
+        const showerGroutRes = await fetch(`/api/shower-grout/last-date?hotel=${hotel}`)
+        if (showerGroutRes.ok) {
+          const showerGroutData = await showerGroutRes.json()
+          setLastShowerGrout(showerGroutData.lastDate)
         }
       } catch (error) {
         console.error("Error fetching last dates:", error)
@@ -170,6 +181,7 @@ export default function PreventiveMaintenance() {
       icon: Wrench,
       status: "upcoming",
     },
+    { id: 22, name: "Boradas de ducha o pica", frequency: "Anual", icon: Wrench, status: "upcoming" },
   ])
 
   const getStatusColor = (status: string) => {
@@ -361,6 +373,53 @@ export default function PreventiveMaintenance() {
     }
   }
 
+  const handleShowerGroutSubmit = async () => {
+    if (!showerGroutType || !operatorName.trim()) {
+      alert("Por favor completa todos los campos obligatorios (tipo y responsable)")
+      return
+    }
+
+    try {
+      const response = await fetch("/api/shower-grout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          hotel,
+          type: showerGroutType,
+          date: showerGroutDate,
+          operator_name: operatorName.trim(),
+          observations: observations.trim() || null,
+        }),
+      })
+
+      if (!response.ok) throw new Error("Error al registrar boradas")
+
+      alert("Boradas registradas exitosamente")
+      setShowerGroutDialogOpen(false)
+      setShowerGroutType("")
+      setOperatorName("")
+      setObservations("")
+      setShowerGroutDate(new Date().toISOString().split("T")[0])
+
+      const showerGroutRes = await fetch(`/api/shower-grout/last-date?hotel=${hotel}`)
+      if (showerGroutRes.ok) {
+        const showerGroutData = await showerGroutRes.json()
+        setLastShowerGrout(showerGroutData.lastDate)
+      }
+
+      setTasks(
+        tasks.map((task) =>
+          task.id === 22
+            ? { ...task, status: "completed" as const, lastCompleted: new Date().toLocaleDateString() }
+            : task,
+        ),
+      )
+    } catch (error) {
+      console.error("Error:", error)
+      alert("Error al registrar las boradas")
+    }
+  }
+
   const handleCompleteTask = (taskId: number) => {
     const task = tasks.find((t) => t.id === taskId)
     if (!task) return
@@ -369,6 +428,7 @@ export default function PreventiveMaintenance() {
     if (taskId === 1) return setPumpDialogOpen(true)
     if (taskId === 11) return setFumigationDialogOpen(true)
     if (taskId === 3) return setFilterCleaningDialogOpen(true)
+    if (taskId === 22) return setShowerGroutDialogOpen(true)
 
     // 🆕 Para las tareas genéricas → abrimos el diálogo visual
     setSelectedGenericTask(task)
@@ -490,6 +550,11 @@ export default function PreventiveMaintenance() {
                             {task.id === 3 && lastFilterCleaning && (
                               <p className="text-xs text-slate-600 mb-2">
                                 Última limpieza: {new Date(lastFilterCleaning).toLocaleDateString()}
+                              </p>
+                            )}
+                            {task.id === 22 && lastShowerGrout && (
+                              <p className="text-xs text-slate-600 mb-2">
+                                Última vez: {new Date(lastShowerGrout).toLocaleDateString()}
                               </p>
                             )}
                             <Button
@@ -736,122 +801,148 @@ export default function PreventiveMaintenance() {
                   </Link>
                 </CardContent>
               </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Wrench className="h-5 w-5 text-blue-600" />
+                    Historial de Boradas de Ducha o Pica
+                  </CardTitle>
+                  <CardDescription>Ver todas las boradas registradas</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Link href={`/${hotel}/preventivo/boradas-ducha`}>
+                    <Button className="w-full">
+                      <History className="h-4 w-4 mr-2" />
+                      Ver Historial
+                    </Button>
+                  </Link>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <CheckCircle2 className="h-5 w-5 text-purple-600" />
+                    Revisión Semestral
+                  </CardTitle>
+                  <CardDescription>Revisar estado de boradas y picas del hotel</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Link href={`/${hotel}/preventivo/revision-semestral`}>
+                    <Button className="w-full">
+                      <History className="h-4 w-4 mr-2" />
+                      Ver Revisión
+                    </Button>
+                  </Link>
+                </CardContent>
+              </Card>
             </div>
           </TabsContent>
         </Tabs>
       </main>
 
-    {/* 💧 Pump Change Dialog (espaciado corregido y scroll en móvil) */}
-<Dialog open={pumpDialogOpen} onOpenChange={setPumpDialogOpen}>
-  <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
-    <DialogHeader className="space-y-1">
-      <DialogTitle className="text-lg font-semibold text-slate-900">
-        Registrar Cambio de Bomba
-      </DialogTitle>
-      <DialogDescription className="text-slate-600">
-        Selecciona la bomba cambiada e ingresa los detalles del mantenimiento realizado.
-      </DialogDescription>
-    </DialogHeader>
+      {/* 💧 Pump Change Dialog (espaciado corregido y scroll en móvil) */}
+      <Dialog open={pumpDialogOpen} onOpenChange={setPumpDialogOpen}>
+        <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
+          <DialogHeader className="space-y-1">
+            <DialogTitle className="text-lg font-semibold text-slate-900">Registrar Cambio de Bomba</DialogTitle>
+            <DialogDescription className="text-slate-600">
+              Selecciona la bomba cambiada e ingresa los detalles del mantenimiento realizado.
+            </DialogDescription>
+          </DialogHeader>
 
-    {/* 🔹 Contenido con más espacio visual */}
-    <div className="space-y-5 mt-4">
-      {/* Selección de bomba */}
-      <div className="space-y-2">
-        <Label className="font-medium text-sm text-slate-800">Selecciona la Bomba *</Label>
-        <div className="grid grid-cols-2 gap-3">
-          <Button
-            variant={selectedPump === 1 ? "default" : "outline"}
-            onClick={() => setSelectedPump(1)}
-            className="w-full"
-          >
-            Bomba 1
-          </Button>
-          <Button
-            variant={selectedPump === 2 ? "default" : "outline"}
-            onClick={() => setSelectedPump(2)}
-            className="w-full"
-          >
-            Bomba 2
-          </Button>
-        </div>
-      </div>
+          {/* 🔹 Contenido con más espacio visual */}
+          <div className="space-y-5 mt-4">
+            {/* Selección de bomba */}
+            <div className="space-y-2">
+              <Label className="font-medium text-sm text-slate-800">Selecciona la Bomba *</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <Button
+                  variant={selectedPump === 1 ? "default" : "outline"}
+                  onClick={() => setSelectedPump(1)}
+                  className="w-full"
+                >
+                  Bomba 1
+                </Button>
+                <Button
+                  variant={selectedPump === 2 ? "default" : "outline"}
+                  onClick={() => setSelectedPump(2)}
+                  className="w-full"
+                >
+                  Bomba 2
+                </Button>
+              </div>
+            </div>
 
-      {/* Responsable */}
-      <div className="space-y-2">
-        <Label htmlFor="operator" className="font-medium text-sm text-slate-800">
-          Nombre del Operario *
-        </Label>
-        <select
-          id="operator"
-          value={operatorName}
-          onChange={(e) => setOperatorName(e.target.value)}
-          className="w-full border border-slate-300 rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-        >
-          <option value="">Seleccionar operario...</option>
-          <option value="xavi">Xavi</option>
-          <option value="john">John</option>
-          <option value="julie">Julie</option>
-          <option value="antonia">Antonia</option>
-          <option value="xavi/john">Xavi/John</option>
-        </select>
-      </div>
+            {/* Responsable */}
+            <div className="space-y-2">
+              <Label htmlFor="operator" className="font-medium text-sm text-slate-800">
+                Nombre del Operario *
+              </Label>
+              <select
+                id="operator"
+                value={operatorName}
+                onChange={(e) => setOperatorName(e.target.value)}
+                className="w-full border border-slate-300 rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              >
+                <option value="">Seleccionar operario...</option>
+                <option value="xavi">Xavi</option>
+                <option value="john">John</option>
+                <option value="julie">Julie</option>
+                <option value="antonia">Antonia</option>
+                <option value="xavi/john">Xavi/John</option>
+              </select>
+            </div>
 
-      {/* Purga */}
-      <div className="space-y-2">
-        <Label className="font-medium text-sm text-slate-800">¿Purga realizada? *</Label>
-        <div className="grid grid-cols-2 gap-3">
-          <Button
-            variant={purgePerformed === true ? "default" : "outline"}
-            onClick={() => setPurgePerformed(true)}
-            className="w-full"
-          >
-            Sí
-          </Button>
-          <Button
-            variant={purgePerformed === false ? "default" : "outline"}
-            onClick={() => setPurgePerformed(false)}
-            className="w-full"
-          >
-            No
-          </Button>
-        </div>
-      </div>
+            {/* Purga */}
+            <div className="space-y-2">
+              <Label className="font-medium text-sm text-slate-800">¿Purga realizada? *</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <Button
+                  variant={purgePerformed === true ? "default" : "outline"}
+                  onClick={() => setPurgePerformed(true)}
+                  className="w-full"
+                >
+                  Sí
+                </Button>
+                <Button
+                  variant={purgePerformed === false ? "default" : "outline"}
+                  onClick={() => setPurgePerformed(false)}
+                  className="w-full"
+                >
+                  No
+                </Button>
+              </div>
+            </div>
 
-      {/* Observaciones */}
-      <div className="space-y-2">
-        <Label htmlFor="observations" className="font-medium text-sm text-slate-800">
-          Observaciones
-        </Label>
-        <Textarea
-          id="observations"
-          value={observations}
-          onChange={(e) => setObservations(e.target.value)}
-          placeholder="Observaciones opcionales sobre el cambio o el estado de la bomba"
-          rows={4}
-          className="resize-none"
-        />
-      </div>
+            {/* Observaciones */}
+            <div className="space-y-2">
+              <Label htmlFor="observations" className="font-medium text-sm text-slate-800">
+                Observaciones
+              </Label>
+              <Textarea
+                id="observations"
+                value={observations}
+                onChange={(e) => setObservations(e.target.value)}
+                placeholder="Observaciones opcionales sobre el cambio o el estado de la bomba"
+                rows={4}
+                className="resize-none"
+              />
+            </div>
 
-      {/* Botones */}
-      <div className="flex gap-2 pt-3">
-        <Button
-          variant="outline"
-          onClick={() => setPumpDialogOpen(false)}
-          className="flex-1"
-        >
-          Cancelar
-        </Button>
-        <Button
-          onClick={handlePumpChangeSubmit}
-          className="flex-1 bg-blue-600 hover:bg-blue-700"
-        >
-          Guardar
-        </Button>
-      </div>
-    </div>
-  </DialogContent>
-</Dialog>
-
+            {/* Botones */}
+            <div className="flex gap-2 pt-3">
+              <Button variant="outline" onClick={() => setPumpDialogOpen(false)} className="flex-1">
+                Cancelar
+              </Button>
+              <Button onClick={handlePumpChangeSubmit} className="flex-1 bg-blue-600 hover:bg-blue-700">
+                Guardar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* 🐞 Fumigation Dialog (mejorado con más espacio y estilo coherente) */}
       <Dialog open={fumigationDialogOpen} onOpenChange={setFumigationDialogOpen}>
@@ -1209,6 +1300,96 @@ export default function PreventiveMaintenance() {
                   }
                 }}
               >
+                Guardar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showerGroutDialogOpen} onOpenChange={setShowerGroutDialogOpen}>
+        <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
+          <DialogHeader className="space-y-1">
+            <DialogTitle className="text-lg font-semibold text-slate-900">
+              Registrar Boradas de Ducha o Pica
+            </DialogTitle>
+            <DialogDescription className="text-slate-600">
+              Selecciona el tipo e ingresa los detalles del mantenimiento realizado.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-5 mt-4">
+            <div className="space-y-2">
+              <Label className="font-medium text-sm text-slate-800">Tipo *</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <Button
+                  variant={showerGroutType === "Ducha" ? "default" : "outline"}
+                  onClick={() => setShowerGroutType("Ducha")}
+                  className="w-full"
+                >
+                  Ducha
+                </Button>
+                <Button
+                  variant={showerGroutType === "Pica" ? "default" : "outline"}
+                  onClick={() => setShowerGroutType("Pica")}
+                  className="w-full"
+                >
+                  Pica
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="shower-grout-date" className="font-medium text-sm text-slate-800">
+                Fecha *
+              </Label>
+              <Input
+                id="shower-grout-date"
+                type="date"
+                value={showerGroutDate}
+                onChange={(e) => setShowerGroutDate(e.target.value)}
+                className="w-full"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="shower-grout-operator" className="font-medium text-sm text-slate-800">
+                Responsable *
+              </Label>
+              <select
+                id="shower-grout-operator"
+                value={operatorName}
+                onChange={(e) => setOperatorName(e.target.value)}
+                className="w-full border border-slate-300 rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              >
+                <option value="">Seleccionar operario...</option>
+                <option value="xavi">Xavi</option>
+                <option value="john">John</option>
+                <option value="julie">Julie</option>
+                <option value="antonia">Antonia</option>
+                <option value="xavi/john">Xavi/John</option>
+              </select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="shower-grout-observations" className="font-medium text-sm text-slate-800">
+                Observaciones
+              </Label>
+              <Textarea
+                id="shower-grout-observations"
+                value={observations}
+                onChange={(e) => setObservations(e.target.value)}
+                placeholder="Observaciones opcionales sobre el estado o el trabajo realizado"
+                rows={4}
+                className="resize-none"
+              />
+            </div>
+
+            <div className="flex gap-2 pt-3">
+              <Button variant="outline" onClick={() => setShowerGroutDialogOpen(false)} className="flex-1">
+                Cancelar
+              </Button>
+              <Button onClick={handleShowerGroutSubmit} className="flex-1 bg-blue-600 hover:bg-blue-700">
                 Guardar
               </Button>
             </div>

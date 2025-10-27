@@ -57,6 +57,16 @@ export async function GET(request: NextRequest) {
       console.error("[v0] Error fetching monthly tasks:", monthlyError)
     }
 
+    const { data: showerGrout, error: showerGroutError } = await supabase
+      .from("shower_grout_records")
+      .select("id, date, type, operator_name, observations")
+      .eq("hotel", hotel)
+      .order("date", { ascending: false })
+
+    if (showerGroutError) {
+      console.error("[v0] Error fetching shower grout:", showerGroutError)
+    }
+
     const upcomingTasks = []
 
     if (fumigations && fumigations.length > 0) {
@@ -206,6 +216,39 @@ export async function GET(request: NextRequest) {
             operator: info.operator,
             frequency: "Mensual (30 días)",
             taskName: taskName,
+          })
+        }
+      })
+    }
+
+    if (showerGrout && showerGrout.length > 0) {
+      // Group by type (Ducha/Pica) and find the most recent record for each
+      const typeLastCompletion: Record<string, { date: Date; operator: string }> = {}
+
+      showerGrout.forEach((record) => {
+        const recordDate = new Date(record.date)
+        if (!typeLastCompletion[record.type] || recordDate > typeLastCompletion[record.type].date) {
+          typeLastCompletion[record.type] = {
+            date: recordDate,
+            operator: record.operator_name,
+          }
+        }
+      })
+
+      // Calculate next date for each type (365 days after last completion)
+      Object.entries(typeLastCompletion).forEach(([type, info]) => {
+        const nextDate = new Date(info.date.getTime() + 365 * 24 * 60 * 60 * 1000)
+        const diffDays = Math.ceil((nextDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+
+        // Include if overdue OR within next 7 days
+        if (diffDays <= 7) {
+          upcomingTasks.push({
+            type: `Boradas de ${type}`,
+            date: nextDate.toISOString().split("T")[0],
+            lastCompleted: info.date.toISOString().split("T")[0],
+            operator: info.operator,
+            frequency: "Anual (365 días)",
+            groutType: type,
           })
         }
       })
