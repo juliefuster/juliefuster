@@ -12,6 +12,7 @@ interface ShowerGroutRecord {
   id: string
   hotel: string
   type: string
+  rooms: string | null // 🆕 Añadido
   date: string
   operator_name: string
   observations: string | null
@@ -21,7 +22,8 @@ interface ShowerGroutRecord {
 export default function ShowerGroutHistory() {
   const params = useParams()
   const hotel = params.hotel as string
-  const hotelName = hotel === "caledonian" ? "Hotel Caledonian" : hotel === "chi" ? "Hotel Chi" : hotel
+  const hotelName =
+    hotel === "caledonian" ? "Hotel Caledonian" : hotel === "chi" ? "Hotel Chi" : hotel
 
   const [records, setRecords] = useState<ShowerGroutRecord[]>([])
   const [loading, setLoading] = useState(true)
@@ -48,6 +50,7 @@ export default function ShowerGroutHistory() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+      {/* 🔹 HEADER */}
       <header className="bg-white border-b border-slate-200 shadow-sm print:hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -71,6 +74,7 @@ export default function ShowerGroutHistory() {
         </div>
       </header>
 
+      {/* 🔹 MAIN CONTENT */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Card>
           <CardHeader>
@@ -81,13 +85,16 @@ export default function ShowerGroutHistory() {
             {loading ? (
               <div className="text-center py-12 text-slate-500">Cargando registros...</div>
             ) : records.length === 0 ? (
-              <div className="text-center py-12 text-slate-500">No hay registros disponibles</div>
+              <div className="text-center py-12 text-slate-500">
+                No hay registros disponibles
+              </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full border-collapse">
                   <thead>
                     <tr className="bg-slate-100 border-b-2 border-slate-300">
                       <th className="text-left p-3 font-semibold text-slate-700">Tipo</th>
+                      <th className="text-left p-3 font-semibold text-slate-700">Habitación</th> {/* 🆕 */}
                       <th className="text-left p-3 font-semibold text-slate-700">Fecha</th>
                       <th className="text-left p-3 font-semibold text-slate-700">Responsable</th>
                       <th className="text-left p-3 font-semibold text-slate-700">Observaciones</th>
@@ -95,17 +102,30 @@ export default function ShowerGroutHistory() {
                   </thead>
                   <tbody>
                     {records.map((record) => (
-                      <tr key={record.id} className="border-b border-slate-200 hover:bg-slate-50">
+                      <tr
+                        key={record.id}
+                        className="border-b border-slate-200 hover:bg-slate-50 transition"
+                      >
                         <td className="p-3">
-                          <Badge variant="outline" className={record.type === "Ducha" ? "bg-blue-50" : "bg-green-50"}>
+                          <Badge
+                            variant="outline"
+                            className={
+                              record.type.toLowerCase() === "ducha"
+                                ? "bg-blue-50 text-blue-800 border-blue-200"
+                                : "bg-green-50 text-green-800 border-green-200"
+                            }
+                          >
                             {record.type}
                           </Badge>
                         </td>
+                        <td className="p-3 text-sm text-slate-700">{record.rooms || "-"}</td> {/* 🆕 */}
                         <td className="p-3 text-sm text-slate-700">
                           {new Date(record.date).toLocaleDateString("es-ES")}
                         </td>
                         <td className="p-3 text-sm text-slate-700">{record.operator_name}</td>
-                        <td className="p-3 text-sm text-slate-600">{record.observations || "-"}</td>
+                        <td className="p-3 text-sm text-slate-600">
+                          {record.observations || "-"}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -116,6 +136,7 @@ export default function ShowerGroutHistory() {
         </Card>
       </main>
 
+      {/* 🔹 PRINT STYLES */}
       <style jsx global>{`
         @media print {
           @page {

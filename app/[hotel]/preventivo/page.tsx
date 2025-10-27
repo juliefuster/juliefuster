@@ -373,52 +373,55 @@ export default function PreventiveMaintenance() {
     }
   }
 
-  const handleShowerGroutSubmit = async () => {
-    if (!showerGroutType || !operatorName.trim()) {
-      alert("Por favor completa todos los campos obligatorios (tipo y responsable)")
-      return
-    }
-
-    try {
-      const response = await fetch("/api/shower-grout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          hotel,
-          type: showerGroutType,
-          date: showerGroutDate,
-          operator_name: operatorName.trim(),
-          observations: observations.trim() || null,
-        }),
-      })
-
-      if (!response.ok) throw new Error("Error al registrar boradas")
-
-      alert("Boradas registradas exitosamente")
-      setShowerGroutDialogOpen(false)
-      setShowerGroutType("")
-      setOperatorName("")
-      setObservations("")
-      setShowerGroutDate(new Date().toISOString().split("T")[0])
-
-      const showerGroutRes = await fetch(`/api/shower-grout/last-date?hotel=${hotel}`)
-      if (showerGroutRes.ok) {
-        const showerGroutData = await showerGroutRes.json()
-        setLastShowerGrout(showerGroutData.lastDate)
-      }
-
-      setTasks(
-        tasks.map((task) =>
-          task.id === 22
-            ? { ...task, status: "completed" as const, lastCompleted: new Date().toLocaleDateString() }
-            : task,
-        ),
-      )
-    } catch (error) {
-      console.error("Error:", error)
-      alert("Error al registrar las boradas")
-    }
+const handleShowerGroutSubmit = async () => {
+  if (!showerGroutType || !operatorName.trim() || selectedRooms.length === 0) {
+    alert("Por favor completa todos los campos obligatorios (tipo, habitaciones y responsable)")
+    return
   }
+
+  try {
+    const response = await fetch("/api/shower-grout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        hotel,
+        type: showerGroutType,
+        date: showerGroutDate,
+        operator_name: operatorName.trim(),
+        rooms: selectedRooms.join(", "), // ✅ Guardamos habitaciones seleccionadas
+        observations: observations.trim() || null,
+      }),
+    })
+
+    if (!response.ok) throw new Error("Error al registrar boradas")
+
+    alert("Boradas registradas exitosamente")
+    setShowerGroutDialogOpen(false)
+    setShowerGroutType("")
+    setSelectedRooms([]) // ✅ Limpiamos selección
+    setOperatorName("")
+    setObservations("")
+    setShowerGroutDate(new Date().toISOString().split("T")[0])
+
+    const showerGroutRes = await fetch(`/api/shower-grout/last-date?hotel=${hotel}`)
+    if (showerGroutRes.ok) {
+      const showerGroutData = await showerGroutRes.json()
+      setLastShowerGrout(showerGroutData.lastDate)
+    }
+
+    setTasks(
+      tasks.map((task) =>
+        task.id === 22
+          ? { ...task, status: "completed" as const, lastCompleted: new Date().toLocaleDateString() }
+          : task,
+      ),
+    )
+  } catch (error) {
+    console.error("Error:", error)
+    alert("Error al registrar las boradas")
+  }
+}
+
 
   const handleCompleteTask = (taskId: number) => {
     const task = tasks.find((t) => t.id === taskId)
@@ -1307,95 +1310,133 @@ export default function PreventiveMaintenance() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={showerGroutDialogOpen} onOpenChange={setShowerGroutDialogOpen}>
-        <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
-          <DialogHeader className="space-y-1">
-            <DialogTitle className="text-lg font-semibold text-slate-900">
-              Registrar Boradas de Ducha o Pica
-            </DialogTitle>
-            <DialogDescription className="text-slate-600">
-              Selecciona el tipo e ingresa los detalles del mantenimiento realizado.
-            </DialogDescription>
-          </DialogHeader>
+     {/* 💧 Shower Grout Dialog con habitaciones añadidas */}
+<Dialog open={showerGroutDialogOpen} onOpenChange={setShowerGroutDialogOpen}>
+  <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+    <DialogHeader className="space-y-1">
+      <DialogTitle className="text-lg font-semibold text-slate-900">
+        Registrar Boradas de Ducha o Pica
+      </DialogTitle>
+      <DialogDescription className="text-slate-600">
+        Selecciona el tipo, las habitaciones e ingresa los detalles del mantenimiento realizado.
+      </DialogDescription>
+    </DialogHeader>
 
-          <div className="space-y-5 mt-4">
-            <div className="space-y-2">
-              <Label className="font-medium text-sm text-slate-800">Tipo *</Label>
-              <div className="grid grid-cols-2 gap-3">
-                <Button
-                  variant={showerGroutType === "Ducha" ? "default" : "outline"}
-                  onClick={() => setShowerGroutType("Ducha")}
-                  className="w-full"
-                >
-                  Ducha
-                </Button>
-                <Button
-                  variant={showerGroutType === "Pica" ? "default" : "outline"}
-                  onClick={() => setShowerGroutType("Pica")}
-                  className="w-full"
-                >
-                  Pica
-                </Button>
-              </div>
-            </div>
+    <div className="space-y-5 mt-4">
+      {/* Tipo */}
+      <div className="space-y-2">
+        <Label className="font-medium text-sm text-slate-800">Tipo *</Label>
+        <div className="grid grid-cols-2 gap-3">
+          <Button
+            variant={showerGroutType === "Ducha" ? "default" : "outline"}
+            onClick={() => setShowerGroutType("Ducha")}
+            className="w-full"
+          >
+            Ducha
+          </Button>
+          <Button
+            variant={showerGroutType === "Pica" ? "default" : "outline"}
+            onClick={() => setShowerGroutType("Pica")}
+            className="w-full"
+          >
+            Pica
+          </Button>
+        </div>
+      </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="shower-grout-date" className="font-medium text-sm text-slate-800">
-                Fecha *
-              </Label>
-              <Input
-                id="shower-grout-date"
-                type="date"
-                value={showerGroutDate}
-                onChange={(e) => setShowerGroutDate(e.target.value)}
-                className="w-full"
+      {/* Fecha */}
+      <div className="space-y-2">
+        <Label htmlFor="shower-grout-date" className="font-medium text-sm text-slate-800">
+          Fecha *
+        </Label>
+        <Input
+          id="shower-grout-date"
+          type="date"
+          value={showerGroutDate}
+          onChange={(e) => setShowerGroutDate(e.target.value)}
+          className="w-full"
+        />
+      </div>
+
+      {/* 🆕 Habitaciones */}
+      <div className="space-y-2">
+        <Label className="font-medium text-sm text-slate-800">Habitaciones *</Label>
+        <div className="grid grid-cols-6 gap-2 mt-2 max-h-56 overflow-y-auto p-3 border rounded-lg bg-slate-50">
+          {rooms.map((room) => (
+            <div key={room} className="flex items-center space-x-2">
+              <Checkbox
+                id={`room-grout-${room}`}
+                checked={selectedRooms.includes(room)}
+                onCheckedChange={(checked) => {
+                  if (checked) {
+                    setSelectedRooms([...selectedRooms, room])
+                  } else {
+                    setSelectedRooms(selectedRooms.filter((r) => r !== room))
+                  }
+                }}
               />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="shower-grout-operator" className="font-medium text-sm text-slate-800">
-                Responsable *
-              </Label>
-              <select
-                id="shower-grout-operator"
-                value={operatorName}
-                onChange={(e) => setOperatorName(e.target.value)}
-                className="w-full border border-slate-300 rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              <label
+                htmlFor={`room-grout-${room}`}
+                className="text-sm cursor-pointer leading-tight text-slate-700"
               >
-                <option value="">Seleccionar operario...</option>
-                <option value="xavi">Xavi</option>
-                <option value="john">John</option>
-                <option value="julie">Julie</option>
-                <option value="antonia">Antonia</option>
-                <option value="xavi/john">Xavi/John</option>
-              </select>
+                {room}
+              </label>
             </div>
+          ))}
+        </div>
+        <p className="text-xs text-slate-600 mt-2">
+          Seleccionadas: {selectedRooms.length} habitaciones
+        </p>
+      </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="shower-grout-observations" className="font-medium text-sm text-slate-800">
-                Observaciones
-              </Label>
-              <Textarea
-                id="shower-grout-observations"
-                value={observations}
-                onChange={(e) => setObservations(e.target.value)}
-                placeholder="Observaciones opcionales sobre el estado o el trabajo realizado"
-                rows={4}
-                className="resize-none"
-              />
-            </div>
+      {/* Responsable */}
+      <div className="space-y-2">
+        <Label htmlFor="shower-grout-operator" className="font-medium text-sm text-slate-800">
+          Responsable *
+        </Label>
+        <select
+          id="shower-grout-operator"
+          value={operatorName}
+          onChange={(e) => setOperatorName(e.target.value)}
+          className="w-full border border-slate-300 rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+        >
+          <option value="">Seleccionar operario...</option>
+          <option value="xavi">Xavi</option>
+          <option value="john">John</option>
+          <option value="julie">Julie</option>
+          <option value="antonia">Antonia</option>
+          <option value="xavi/john">Xavi/John</option>
+        </select>
+      </div>
 
-            <div className="flex gap-2 pt-3">
-              <Button variant="outline" onClick={() => setShowerGroutDialogOpen(false)} className="flex-1">
-                Cancelar
-              </Button>
-              <Button onClick={handleShowerGroutSubmit} className="flex-1 bg-blue-600 hover:bg-blue-700">
-                Guardar
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Observaciones */}
+      <div className="space-y-2">
+        <Label htmlFor="shower-grout-observations" className="font-medium text-sm text-slate-800">
+          Observaciones
+        </Label>
+        <Textarea
+          id="shower-grout-observations"
+          value={observations}
+          onChange={(e) => setObservations(e.target.value)}
+          placeholder="Observaciones opcionales sobre el estado o el trabajo realizado"
+          rows={4}
+          className="resize-none"
+        />
+      </div>
+
+      {/* Botones */}
+      <div className="flex gap-2 pt-3">
+        <Button variant="outline" onClick={() => setShowerGroutDialogOpen(false)} className="flex-1">
+          Cancelar
+        </Button>
+        <Button onClick={handleShowerGroutSubmit} className="flex-1 bg-blue-600 hover:bg-blue-700">
+          Guardar
+        </Button>
+      </div>
+    </div>
+  </DialogContent>
+</Dialog>
+
 
       <style jsx global>{`
         @media print {

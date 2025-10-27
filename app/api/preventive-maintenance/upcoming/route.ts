@@ -57,15 +57,40 @@ export async function GET(request: NextRequest) {
       console.error("[v0] Error fetching monthly tasks:", monthlyError)
     }
 
-    const { data: showerGrout, error: showerGroutError } = await supabase
-      .from("shower_grout_records")
-      .select("id, date, type, operator_name, observations")
-      .eq("hotel", hotel)
-      .order("date", { ascending: false })
+    // 🛁 BORADAS DE DUCHA O PICA (cada 365 días)
+if (grout && grout.length > 0) {
+  // Agrupar por tipo (ducha/pica) y encontrar el último registro de cada tipo
+  const typeLastCompletion: Record<string, { date: Date; operator: string }> = {}
 
-    if (showerGroutError) {
-      console.error("[v0] Error fetching shower grout:", showerGroutError)
+  grout.forEach((record) => {
+    const recordDate = new Date(record.date)
+    if (!typeLastCompletion[record.type] || recordDate > typeLastCompletion[record.type].date) {
+      typeLastCompletion[record.type] = {
+        date: recordDate,
+        operator: record.operator_name,
+      }
     }
+  })
+
+  // Calcular la próxima fecha (365 días después)
+  Object.entries(typeLastCompletion).forEach(([type, info]) => {
+    const nextDate = new Date(info.date.getTime() + 365 * 24 * 60 * 60 * 1000)
+    const diffDays = Math.ceil((nextDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+
+    // Incluir si está vencida o próxima (7 días)
+    if (diffDays <= 7) {
+      upcomingTasks.push({
+        type: `Boradas de ${type}`,
+        date: nextDate.toISOString().split("T")[0],
+        lastCompleted: info.date.toISOString().split("T")[0],
+        operator: info.operator,
+        frequency: "Anual (365 días)",
+        groutType: type,
+      })
+    }
+  })
+}
+
 
     const upcomingTasks = []
 

@@ -13,6 +13,7 @@ interface InspectionRecord {
   id: string
   hotel: string
   item: string
+  rooms: string | null   // 🆕 Añadido
   date: string
   status: "Bien" | "Regular" | "Mal"
   operator_name: string
@@ -147,6 +148,7 @@ export default function SemiannualReview() {
                   <thead>
                     <tr className="bg-slate-100 border-b-2 border-slate-300">
                       <th className="text-left p-3 font-semibold text-slate-700">Elemento</th>
+                      <th className="text-left p-3 font-semibold text-slate-700">Habitación</th> {/* 🆕 */}
                       <th className="text-left p-3 font-semibold text-slate-700">Fecha</th>
                       <th className="text-left p-3 font-semibold text-slate-700">Estado</th>
                       <th className="text-left p-3 font-semibold text-slate-700">Responsable</th>
@@ -163,6 +165,7 @@ export default function SemiannualReview() {
                         }`}
                       >
                         <td className="p-3 text-sm font-medium text-slate-800">{record.item}</td>
+                        <td className="p-3 text-sm text-slate-700">{record.rooms || "-"}</td> {/* 🆕 */}
                         <td className="p-3 text-sm text-slate-700">
                           {new Date(record.date).toLocaleDateString("es-ES")}
                         </td>

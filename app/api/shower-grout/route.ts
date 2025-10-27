@@ -4,10 +4,19 @@ import { createServerClient } from "@/lib/supabase/server"
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { hotel, type, date, operator_name, observations } = body
+    const { hotel, type, rooms, date, operator_name, observations } = body
 
+    // Validación de campos requeridos
     if (!hotel || !type || !date || !operator_name) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
+    }
+
+    // Validar rooms: puede ser string o array
+    let roomsToStore: string | null = null
+    if (Array.isArray(rooms)) {
+      roomsToStore = rooms.join(", ")
+    } else if (typeof rooms === "string" && rooms.trim() !== "") {
+      roomsToStore = rooms.trim()
     }
 
     const supabase = await createServerClient()
@@ -18,9 +27,10 @@ export async function POST(request: NextRequest) {
         {
           hotel,
           type,
+          rooms: roomsToStore,
           date,
           operator_name,
-          observations,
+          observations: observations || null,
         },
       ])
       .select()
@@ -50,7 +60,7 @@ export async function GET(request: NextRequest) {
 
     const { data, error } = await supabase
       .from("shower_grout_records")
-      .select("*")
+      .select("id, hotel, type, rooms, date, operator_name, observations")
       .eq("hotel", hotel)
       .order("date", { ascending: false })
 
