@@ -1362,26 +1362,31 @@ const handleShowerGroutSubmit = async () => {
       <div className="space-y-2">
         <Label className="font-medium text-sm text-slate-800">Habitaciones *</Label>
         <div className="grid grid-cols-6 gap-2 mt-2 max-h-56 overflow-y-auto p-3 border rounded-lg bg-slate-50">
-          {rooms.map((room) => (
-            <div key={room} className="flex items-center space-x-2">
-              <Checkbox
-                id={`room-grout-${room}`}
-                checked={selectedRooms.includes(room)}
-                onCheckedChange={(checked) => {
-                  if (checked) {
-                    setSelectedRooms([...selectedRooms, room])
-                  } else {
-                    setSelectedRooms(selectedRooms.filter((r) => r !== room))
-                  }
-                }}
-              />
-              <label
-                htmlFor={`room-grout-${room}`}
-                className="text-sm cursor-pointer leading-tight text-slate-700"
-              >
-                {room}
-              </label>
-            </div>
+         {rooms
+  .filter((room) => /^\d+$/.test(room)) // ✅ Solo habitaciones numéricas
+  .map((room) => (
+    <div key={room} className="flex items-center space-x-2">
+      <Checkbox
+        id={`room-grout-${room}`}
+        checked={selectedRooms.includes(room)}
+        onCheckedChange={(checked) => {
+          if (checked) {
+            setSelectedRooms([...selectedRooms, room])
+          } else {
+            setSelectedRooms(selectedRooms.filter((r) => r !== room))
+          }
+        }}
+      />
+      <label
+        htmlFor={`room-grout-${room}`}
+        className="text-sm cursor-pointer leading-tight text-slate-700"
+      >
+        {room}
+      </label>
+    </div>
+
+
+
           ))}
         </div>
         <p className="text-xs text-slate-600 mt-2">
