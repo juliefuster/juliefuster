@@ -373,55 +373,54 @@ export default function PreventiveMaintenance() {
     }
   }
 
-const handleShowerGroutSubmit = async () => {
-  if (!showerGroutType || !operatorName.trim() || selectedRooms.length === 0) {
-    alert("Por favor completa todos los campos obligatorios (tipo, habitaciones y responsable)")
-    return
-  }
-
-  try {
-    const response = await fetch("/api/shower-grout", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        hotel,
-        type: showerGroutType,
-        date: showerGroutDate,
-        operator_name: operatorName.trim(),
-        rooms: selectedRooms.join(", "), // ✅ Guardamos habitaciones seleccionadas
-        observations: observations.trim() || null,
-      }),
-    })
-
-    if (!response.ok) throw new Error("Error al registrar boradas")
-
-    alert("Boradas registradas exitosamente")
-    setShowerGroutDialogOpen(false)
-    setShowerGroutType("")
-    setSelectedRooms([]) // ✅ Limpiamos selección
-    setOperatorName("")
-    setObservations("")
-    setShowerGroutDate(new Date().toISOString().split("T")[0])
-
-    const showerGroutRes = await fetch(`/api/shower-grout/last-date?hotel=${hotel}`)
-    if (showerGroutRes.ok) {
-      const showerGroutData = await showerGroutRes.json()
-      setLastShowerGrout(showerGroutData.lastDate)
+  const handleShowerGroutSubmit = async () => {
+    if (!showerGroutType || !operatorName.trim() || selectedRooms.length === 0) {
+      alert("Por favor completa todos los campos obligatorios (tipo, habitaciones y responsable)")
+      return
     }
 
-    setTasks(
-      tasks.map((task) =>
-        task.id === 22
-          ? { ...task, status: "completed" as const, lastCompleted: new Date().toLocaleDateString() }
-          : task,
-      ),
-    )
-  } catch (error) {
-    console.error("Error:", error)
-    alert("Error al registrar las boradas")
-  }
-}
+    try {
+      const response = await fetch("/api/shower-grout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          hotel,
+          type: showerGroutType,
+          date: showerGroutDate,
+          operator_name: operatorName.trim(),
+          rooms: selectedRooms.join(", "), // ✅ Guardamos habitaciones seleccionadas
+          observations: observations.trim() || null,
+        }),
+      })
 
+      if (!response.ok) throw new Error("Error al registrar boradas")
+
+      alert("Boradas registradas exitosamente")
+      setShowerGroutDialogOpen(false)
+      setShowerGroutType("")
+      setSelectedRooms([]) // ✅ Limpiamos selección
+      setOperatorName("")
+      setObservations("")
+      setShowerGroutDate(new Date().toISOString().split("T")[0])
+
+      const showerGroutRes = await fetch(`/api/shower-grout/last-date?hotel=${hotel}`)
+      if (showerGroutRes.ok) {
+        const showerGroutData = await showerGroutRes.json()
+        setLastShowerGrout(showerGroutData.lastDate)
+      }
+
+      setTasks(
+        tasks.map((task) =>
+          task.id === 22
+            ? { ...task, status: "completed" as const, lastCompleted: new Date().toLocaleDateString() }
+            : task,
+        ),
+      )
+    } catch (error) {
+      console.error("Error:", error)
+      alert("Error al registrar las boradas")
+    }
+  }
 
   const handleCompleteTask = (taskId: number) => {
     const task = tasks.find((t) => t.id === taskId)
@@ -577,12 +576,13 @@ const handleShowerGroutSubmit = async () => {
               )
             })}
           </TabsContent>
+
           <TabsContent value="calendar" className="space-y-6">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
-                  <CardTitle>Tareas Pendientes y del Día</CardTitle>
-                  <CardDescription>Muestra las tareas que están vencidas o que tocan hoy</CardDescription>
+                  <CardTitle>Tareas Próximas (7 días)</CardTitle>
+                  <CardDescription>Tareas programadas para los próximos 7 días</CardDescription>
                 </div>
                 <div className="flex gap-2 print:hidden">
                   <Button variant="outline" size="sm" onClick={handlePrint}>
@@ -621,105 +621,126 @@ const handleShowerGroutSubmit = async () => {
                   (() => {
                     const today = new Date()
                     today.setHours(0, 0, 0, 0)
+                    const sevenDaysFromNow = new Date(today)
+                    sevenDaysFromNow.setDate(today.getDate() + 7)
 
-                    const filtered = upcomingTasks
+                    const weeklyTasks = upcomingTasks
                       .map((task) => {
                         const taskDate = new Date(task.date)
                         const daysUntil = Math.ceil((taskDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
                         return { ...task, taskDate, daysUntil }
                       })
-                      .filter((t) => t.daysUntil <= 0)
+                      .filter((t) => t.taskDate >= today && t.taskDate <= sevenDaysFromNow)
                       .sort((a, b) => a.taskDate.getTime() - b.taskDate.getTime())
 
-                    if (filtered.length === 0)
+                    if (weeklyTasks.length === 0) {
                       return (
                         <div className="text-center py-12 text-green-600">
                           <CheckCircle2 className="h-10 w-10 mx-auto mb-3" />
-                          <p className="font-medium">No hay tareas pendientes 🎉</p>
+                          <p className="font-medium">No hay tareas pendientes para los próximos 7 días 🎉</p>
                         </div>
                       )
+                    }
 
                     return (
-                      <div className="overflow-x-auto">
-                        <table className="w-full border-collapse">
-                          <thead>
-                            <tr className="bg-slate-100 border-b-2 border-slate-300">
-                              <th className="text-left p-3 font-semibold text-slate-700">Estado</th>
-                              <th className="text-left p-3 font-semibold text-slate-700">Tipo de Tarea</th>
-                              <th className="text-left p-3 font-semibold text-slate-700">Fecha</th>
-                              <th className="text-left p-3 font-semibold text-slate-700">Habitaciones</th>
-                              <th className="text-left p-3 font-semibold text-slate-700">Último Responsable</th>
-                              <th className="text-left p-3 font-semibold text-slate-700">Última Vez</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {filtered.map((task, i) => {
-                              const isOverdue = task.daysUntil < 0
-                              const isToday = task.daysUntil === 0
+                      <div className="space-y-4">
+                        {weeklyTasks.map((task, i) => {
+                          const isOverdue = task.daysUntil < 0
+                          const isToday = task.daysUntil === 0
 
-                              return (
-                                <tr
-                                  key={i}
-                                  className={`border-b border-slate-200 hover:bg-slate-50 transition-colors ${
-                                    isOverdue ? "bg-red-50" : isToday ? "bg-orange-50" : ""
-                                  }`}
-                                >
-                                  <td className="p-3">
-                                    <div className="flex items-center gap-2">
-                                      <div
-                                        className={`p-2 rounded-full ${
-                                          isOverdue ? "bg-red-200 text-red-800" : "bg-orange-200 text-orange-800"
-                                        }`}
-                                      >
-                                        {isOverdue ? (
-                                          <AlertTriangle className="h-4 w-4" />
-                                        ) : (
-                                          <Clock className="h-4 w-4" />
-                                        )}
-                                      </div>
-                                      <span className="text-sm font-medium">
-                                        {isOverdue ? `${Math.abs(task.daysUntil)} días de retraso` : "Hoy"}
-                                      </span>
-                                    </div>
-                                  </td>
-                                  <td className="p-3">
-                                    <div>
-                                      <p className="font-semibold text-slate-800">{task.type}</p>
-                                      <p className="text-xs text-slate-600">{task.frequency}</p>
-                                    </div>
-                                  </td>
-                                  <td className="p-3 text-sm text-slate-700">
-                                    {task.taskDate.toLocaleDateString("es-ES")}
-                                  </td>
-                                  <td className="p-3">
-                                    {task.rooms?.length > 0 ? (
-                                      <div className="flex flex-wrap gap-1">
-                                        {task.rooms.slice(0, 8).map((room: string, idx: number) => (
-                                          <Badge key={idx} variant="outline" className="text-xs">
-                                            {room}
-                                          </Badge>
-                                        ))}
-                                        {task.rooms.length > 8 && (
-                                          <Badge variant="outline" className="text-xs">
-                                            +{task.rooms.length - 8}
-                                          </Badge>
-                                        )}
-                                      </div>
+                          return (
+                            <Card
+                              key={i}
+                              className={`border-l-4 ${
+                                isOverdue
+                                  ? "border-l-red-500 bg-red-50"
+                                  : isToday
+                                    ? "border-l-orange-500 bg-orange-50"
+                                    : "border-l-blue-500 bg-blue-50"
+                              }`}
+                            >
+                              <CardHeader className="pb-3">
+                                <div className="flex items-start justify-between">
+                                  <div className="flex-1">
+                                    <CardTitle className="text-base font-semibold">{task.type}</CardTitle>
+                                    <CardDescription className="text-sm mt-1">
+                                      {task.taskDate.toLocaleDateString("es-ES", {
+                                        weekday: "long",
+                                        year: "numeric",
+                                        month: "long",
+                                        day: "numeric",
+                                      })}
+                                    </CardDescription>
+                                  </div>
+                                  <Badge
+                                    variant="outline"
+                                    className={`${
+                                      isOverdue
+                                        ? "bg-red-100 text-red-800 border-red-300"
+                                        : isToday
+                                          ? "bg-orange-100 text-orange-800 border-orange-300"
+                                          : "bg-blue-100 text-blue-800 border-blue-300"
+                                    }`}
+                                  >
+                                    {isOverdue ? (
+                                      <>
+                                        <AlertTriangle className="h-3 w-3 mr-1" />
+                                        {Math.abs(task.daysUntil)} días de retraso
+                                      </>
+                                    ) : isToday ? (
+                                      <>
+                                        <Clock className="h-3 w-3 mr-1" />
+                                        Hoy
+                                      </>
                                     ) : (
-                                      <span className="text-sm text-slate-500">-</span>
+                                      <>
+                                        <Calendar className="h-3 w-3 mr-1" />
+                                        En {task.daysUntil} días
+                                      </>
                                     )}
-                                  </td>
-                                  <td className="p-3 text-sm text-slate-700">{task.operator_name || "-"}</td>
-                                  <td className="p-3 text-sm text-slate-700">
-                                    {task.lastCompleted
-                                      ? new Date(task.lastCompleted).toLocaleDateString("es-ES")
-                                      : "-"}
-                                  </td>
-                                </tr>
-                              )
-                            })}
-                          </tbody>
-                        </table>
+                                  </Badge>
+                                </div>
+                              </CardHeader>
+                              <CardContent className="space-y-2">
+                                {task.rooms && task.rooms.length > 0 && (
+                                  <div>
+                                    <p className="text-sm font-medium text-slate-700 mb-1">
+                                      {task.type.includes("filtro") ? "Filtros:" : "Habitaciones:"}
+                                    </p>
+                                    <div className="flex flex-wrap gap-1">
+                                      {task.rooms.slice(0, 10).map((room: string, idx: number) => (
+                                        <Badge key={idx} variant="outline" className="text-xs">
+                                          {room}
+                                        </Badge>
+                                      ))}
+                                      {task.rooms.length > 10 && (
+                                        <Badge variant="outline" className="text-xs">
+                                          +{task.rooms.length - 10} más
+                                        </Badge>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+                                {task.operator_name && (
+                                  <p className="text-sm text-slate-600">
+                                    <strong>Último responsable:</strong> {task.operator_name}
+                                  </p>
+                                )}
+                                {task.lastCompleted && (
+                                  <p className="text-sm text-slate-600">
+                                    <strong>Última vez:</strong>{" "}
+                                    {new Date(task.lastCompleted).toLocaleDateString("es-ES")}
+                                  </p>
+                                )}
+                                {task.frequency && (
+                                  <p className="text-xs text-slate-500">
+                                    <strong>Frecuencia:</strong> {task.frequency}
+                                  </p>
+                                )}
+                              </CardContent>
+                            </Card>
+                          )
+                        })}
                       </div>
                     )
                   })()
@@ -1310,138 +1331,132 @@ const handleShowerGroutSubmit = async () => {
         </DialogContent>
       </Dialog>
 
-     {/* 💧 Shower Grout Dialog con habitaciones añadidas */}
-<Dialog open={showerGroutDialogOpen} onOpenChange={setShowerGroutDialogOpen}>
-  <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-    <DialogHeader className="space-y-1">
-      <DialogTitle className="text-lg font-semibold text-slate-900">
-        Registrar Boradas de Ducha o Pica
-      </DialogTitle>
-      <DialogDescription className="text-slate-600">
-        Selecciona el tipo, las habitaciones e ingresa los detalles del mantenimiento realizado.
-      </DialogDescription>
-    </DialogHeader>
+      {/* 💧 Shower Grout Dialog con habitaciones añadidas */}
+      <Dialog open={showerGroutDialogOpen} onOpenChange={setShowerGroutDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader className="space-y-1">
+            <DialogTitle className="text-lg font-semibold text-slate-900">
+              Registrar Boradas de Ducha o Pica
+            </DialogTitle>
+            <DialogDescription className="text-slate-600">
+              Selecciona el tipo, las habitaciones e ingresa los detalles del mantenimiento realizado.
+            </DialogDescription>
+          </DialogHeader>
 
-    <div className="space-y-5 mt-4">
-      {/* Tipo */}
-      <div className="space-y-2">
-        <Label className="font-medium text-sm text-slate-800">Tipo *</Label>
-        <div className="grid grid-cols-2 gap-3">
-          <Button
-            variant={showerGroutType === "Ducha" ? "default" : "outline"}
-            onClick={() => setShowerGroutType("Ducha")}
-            className="w-full"
-          >
-            Ducha
-          </Button>
-          <Button
-            variant={showerGroutType === "Pica" ? "default" : "outline"}
-            onClick={() => setShowerGroutType("Pica")}
-            className="w-full"
-          >
-            Pica
-          </Button>
-        </div>
-      </div>
+          <div className="space-y-5 mt-4">
+            {/* Tipo */}
+            <div className="space-y-2">
+              <Label className="font-medium text-sm text-slate-800">Tipo *</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <Button
+                  variant={showerGroutType === "Ducha" ? "default" : "outline"}
+                  onClick={() => setShowerGroutType("Ducha")}
+                  className="w-full"
+                >
+                  Ducha
+                </Button>
+                <Button
+                  variant={showerGroutType === "Pica" ? "default" : "outline"}
+                  onClick={() => setShowerGroutType("Pica")}
+                  className="w-full"
+                >
+                  Pica
+                </Button>
+              </div>
+            </div>
 
-      {/* Fecha */}
-      <div className="space-y-2">
-        <Label htmlFor="shower-grout-date" className="font-medium text-sm text-slate-800">
-          Fecha *
-        </Label>
-        <Input
-          id="shower-grout-date"
-          type="date"
-          value={showerGroutDate}
-          onChange={(e) => setShowerGroutDate(e.target.value)}
-          className="w-full"
-        />
-      </div>
+            {/* Fecha */}
+            <div className="space-y-2">
+              <Label htmlFor="shower-grout-date" className="font-medium text-sm text-slate-800">
+                Fecha *
+              </Label>
+              <Input
+                id="shower-grout-date"
+                type="date"
+                value={showerGroutDate}
+                onChange={(e) => setShowerGroutDate(e.target.value)}
+                className="w-full"
+              />
+            </div>
 
-      {/* 🆕 Habitaciones */}
-      <div className="space-y-2">
-        <Label className="font-medium text-sm text-slate-800">Habitaciones *</Label>
-        <div className="grid grid-cols-6 gap-2 mt-2 max-h-56 overflow-y-auto p-3 border rounded-lg bg-slate-50">
-         {rooms
-  .filter((room) => /^\d+$/.test(room)) // ✅ Solo habitaciones numéricas
-  .map((room) => (
-    <div key={room} className="flex items-center space-x-2">
-      <Checkbox
-        id={`room-grout-${room}`}
-        checked={selectedRooms.includes(room)}
-        onCheckedChange={(checked) => {
-          if (checked) {
-            setSelectedRooms([...selectedRooms, room])
-          } else {
-            setSelectedRooms(selectedRooms.filter((r) => r !== room))
-          }
-        }}
-      />
-      <label
-        htmlFor={`room-grout-${room}`}
-        className="text-sm cursor-pointer leading-tight text-slate-700"
-      >
-        {room}
-      </label>
-    </div>
+            {/* 🆕 Habitaciones */}
+            <div className="space-y-2">
+              <Label className="font-medium text-sm text-slate-800">Habitaciones *</Label>
+              <div className="grid grid-cols-6 gap-2 mt-2 max-h-56 overflow-y-auto p-3 border rounded-lg bg-slate-50">
+                {rooms
+                  .filter((room) => /^\d+$/.test(room)) // ✅ Solo habitaciones numéricas
+                  .map((room) => (
+                    <div key={room} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`room-grout-${room}`}
+                        checked={selectedRooms.includes(room)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setSelectedRooms([...selectedRooms, room])
+                          } else {
+                            setSelectedRooms(selectedRooms.filter((r) => r !== room))
+                          }
+                        }}
+                      />
+                      <label
+                        htmlFor={`room-grout-${room}`}
+                        className="text-sm cursor-pointer leading-tight text-slate-700"
+                      >
+                        {room}
+                      </label>
+                    </div>
+                  ))}
+              </div>
+              <p className="text-xs text-slate-600 mt-2">Seleccionadas: {selectedRooms.length} habitaciones</p>
+            </div>
 
+            {/* Responsable */}
+            <div className="space-y-2">
+              <Label htmlFor="shower-grout-operator" className="font-medium text-sm text-slate-800">
+                Responsable *
+              </Label>
+              <select
+                id="shower-grout-operator"
+                value={operatorName}
+                onChange={(e) => setOperatorName(e.target.value)}
+                className="w-full border border-slate-300 rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              >
+                <option value="">Seleccionar operario...</option>
+                <option value="xavi">Xavi</option>
+                <option value="john">John</option>
+                <option value="julie">Julie</option>
+                <option value="antonia">Antonia</option>
+                <option value="xavi/john">Xavi/John</option>
+              </select>
+            </div>
 
+            {/* Observaciones */}
+            <div className="space-y-2">
+              <Label htmlFor="shower-grout-observations" className="font-medium text-sm text-slate-800">
+                Observaciones
+              </Label>
+              <Textarea
+                id="shower-grout-observations"
+                value={observations}
+                onChange={(e) => setObservations(e.target.value)}
+                placeholder="Observaciones opcionales sobre el estado o el trabajo realizado"
+                rows={4}
+                className="resize-none"
+              />
+            </div>
 
-          ))}
-        </div>
-        <p className="text-xs text-slate-600 mt-2">
-          Seleccionadas: {selectedRooms.length} habitaciones
-        </p>
-      </div>
-
-      {/* Responsable */}
-      <div className="space-y-2">
-        <Label htmlFor="shower-grout-operator" className="font-medium text-sm text-slate-800">
-          Responsable *
-        </Label>
-        <select
-          id="shower-grout-operator"
-          value={operatorName}
-          onChange={(e) => setOperatorName(e.target.value)}
-          className="w-full border border-slate-300 rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-        >
-          <option value="">Seleccionar operario...</option>
-          <option value="xavi">Xavi</option>
-          <option value="john">John</option>
-          <option value="julie">Julie</option>
-          <option value="antonia">Antonia</option>
-          <option value="xavi/john">Xavi/John</option>
-        </select>
-      </div>
-
-      {/* Observaciones */}
-      <div className="space-y-2">
-        <Label htmlFor="shower-grout-observations" className="font-medium text-sm text-slate-800">
-          Observaciones
-        </Label>
-        <Textarea
-          id="shower-grout-observations"
-          value={observations}
-          onChange={(e) => setObservations(e.target.value)}
-          placeholder="Observaciones opcionales sobre el estado o el trabajo realizado"
-          rows={4}
-          className="resize-none"
-        />
-      </div>
-
-      {/* Botones */}
-      <div className="flex gap-2 pt-3">
-        <Button variant="outline" onClick={() => setShowerGroutDialogOpen(false)} className="flex-1">
-          Cancelar
-        </Button>
-        <Button onClick={handleShowerGroutSubmit} className="flex-1 bg-blue-600 hover:bg-blue-700">
-          Guardar
-        </Button>
-      </div>
-    </div>
-  </DialogContent>
-</Dialog>
-
+            {/* Botones */}
+            <div className="flex gap-2 pt-3">
+              <Button variant="outline" onClick={() => setShowerGroutDialogOpen(false)} className="flex-1">
+                Cancelar
+              </Button>
+              <Button onClick={handleShowerGroutSubmit} className="flex-1 bg-blue-600 hover:bg-blue-700">
+                Guardar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <style jsx global>{`
         @media print {
