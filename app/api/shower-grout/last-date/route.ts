@@ -1,33 +1,28 @@
-import { type NextRequest, NextResponse } from "next/server"
-import { createServerClient } from "@/lib/supabase/server"
+import { NextResponse } from "next/server"
+import { createClient } from "@/lib/supabase/server"
 
-export async function GET(request: NextRequest) {
+export async function GET(req: Request) {
   try {
-    const { searchParams } = new URL(request.url)
+    const { searchParams } = new URL(req.url)
     const hotel = searchParams.get("hotel")
+    if (!hotel) return NextResponse.json({ error: "Missing hotel" }, { status: 400 })
 
-    if (!hotel) {
-      return NextResponse.json({ error: "Hotel parameter required" }, { status: 400 })
-    }
-
-    const supabase = await createServerClient()
-
+    const supabase = createClient()
     const { data, error } = await supabase
       .from("shower_grout_records")
       .select("date")
       .eq("hotel", hotel)
       .order("date", { ascending: false })
       .limit(1)
-      .single()
 
-    if (error && error.code !== "PGRST116") {
-      console.error("[v0] Supabase error:", error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
-    }
+    if (error) throw error
 
-    return NextResponse.json({ lastDate: data?.date || null })
-  } catch (error) {
-    console.error("[v0] API error:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    return NextResponse.json(
+      { lastDate: data?.[0]?.date ?? null },
+      { headers: { "Cache-Control": "no-store" } },
+    )
+  } catch (e: any) {
+    console.error("[last-date:grout] error:", e?.message)
+    return NextResponse.json({ error: "Server error" }, { status: 500 })
   }
 }

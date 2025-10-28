@@ -54,6 +54,7 @@ const ROOM_SECTIONS = {
     "Pica",
     "WC",
     "Ducha / Bañera",
+    "Marco puerta ducha",
     "Grifería",
     "Extractor",
     "Luces baño",

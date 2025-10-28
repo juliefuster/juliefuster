@@ -1,15 +1,13 @@
 import { NextResponse } from "next/server"
-import { supabase } from "@/lib/supabase/client"
+import { createClient } from "@/lib/supabase/server"
 
-export async function GET(request: Request) {
+export async function GET(req: Request) {
   try {
-    const { searchParams } = new URL(request.url)
+    const { searchParams } = new URL(req.url)
     const hotel = searchParams.get("hotel")
+    if (!hotel) return NextResponse.json({ error: "Missing hotel" }, { status: 400 })
 
-    if (!hotel) {
-      return NextResponse.json({ error: "Hotel parameter required" }, { status: 400 })
-    }
-
+    const supabase = createClient()
     const { data, error } = await supabase
       .from("filter_cleaning_records")
       .select("created_at")
@@ -19,13 +17,15 @@ export async function GET(request: Request) {
 
     if (error) throw error
 
-    const lastDate = data?.[0]?.created_at ?? null
-    return NextResponse.json({ lastDate })
-  } catch (err: any) {
-    console.error("Error fetching last filter cleaning date:", err.message)
+    // Normalizamos a ISO date (YYYY-MM-DD)
+    const last = data?.[0]?.created_at ? new Date(data[0].created_at).toISOString() : null
+
     return NextResponse.json(
-      { error: "Failed to fetch last filter cleaning date", details: err.message },
-      { status: 500 }
+      { lastDate: last },
+      { headers: { "Cache-Control": "no-store" } },
     )
+  } catch (e: any) {
+    console.error("[last-date:filter] error:", e?.message)
+    return NextResponse.json({ error: "Server error" }, { status: 500 })
   }
 }
