@@ -597,7 +597,8 @@ export default function PreventiveMaintenance() {
             try {
               const res = await fetch(`/api/preventive-maintenance/upcoming?hotel=${hotel}`)
               const data = await res.json()
-              // ✅ Solo fumigación y limpieza de filtros
+
+              // ✅ Solo Fumigación y Limpieza de filtros
               const filtered = (data.tasks || []).filter(
                 (t: any) =>
                   t.type?.toLowerCase().includes("fumigación") ||
@@ -629,93 +630,117 @@ export default function PreventiveMaintenance() {
           <p className="font-medium">No hay tareas pendientes en fumigación o filtros 🎉</p>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-slate-200 shadow-sm">
-          <table className="w-full text-sm border-collapse">
-            <thead className="bg-slate-100">
-              <tr>
-                <th className="px-3 py-2 text-left font-semibold text-slate-700">Tarea</th>
-                <th className="px-3 py-2 text-left font-semibold text-slate-700">Fecha</th>
-                <th className="px-3 py-2 text-left font-semibold text-slate-700">Habitaciones</th>
-                <th className="px-3 py-2 text-left font-semibold text-slate-700">Responsable</th>
-                <th className="px-3 py-2 text-left font-semibold text-slate-700">Última vez</th>
-                <th className="px-3 py-2 text-left font-semibold text-slate-700">Frecuencia</th>
-                <th className="px-3 py-2 text-left font-semibold text-slate-700">Estado</th>
-              </tr>
-            </thead>
-            <tbody>
-              {upcomingTasks.map((task: any, i: number) => {
-                const today = new Date()
-                const taskDate = new Date(task.date)
-                const daysUntil = Math.ceil(
-                  (taskDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
-                )
-                const isOverdue = daysUntil < 0
-                const isToday = daysUntil === 0
+        (() => {
+          // ✅ Agrupar tareas por tipo + fecha + responsable + frecuencia
+          const grouped = upcomingTasks.reduce((acc: any, task: any) => {
+            const key = `${task.type}-${task.date}-${task.operator_name || ""}-${task.frequency || ""}`
+            if (!acc[key]) acc[key] = { ...task, rooms: [] }
+            if (Array.isArray(task.rooms)) {
+              acc[key].rooms.push(...task.rooms)
+            } else if (typeof task.rooms === "string" && task.rooms.trim() !== "") {
+              acc[key].rooms.push(task.rooms)
+            }
+            return acc
+          }, {})
 
-                return (
-                  <tr
-                    key={i}
-                    className={`border-b hover:bg-slate-50 ${
-                      isOverdue
-                        ? "bg-red-50"
-                        : isToday
-                        ? "bg-orange-50"
-                        : "bg-blue-50"
-                    }`}
-                  >
-                    <td className="px-3 py-2 font-medium text-slate-800">{task.type}</td>
-                    <td className="px-3 py-2 text-slate-700">
-                      {taskDate.toLocaleDateString("es-ES", {
-                        day: "2-digit",
-                        month: "short",
-                        year: "numeric",
-                      })}
-                    </td>
-                    <td className="px-3 py-2 text-slate-700 max-w-xs">
-                      {task.rooms && task.rooms.length > 0 ? (
-                        <span className="text-xs text-slate-700 block truncate">
-                          {task.rooms.slice(0, 10).join(", ")}
-                          {task.rooms.length > 10 && ` (+${task.rooms.length - 10})`}
-                        </span>
-                      ) : (
-                        "-"
-                      )}
-                    </td>
-                    <td className="px-3 py-2 text-slate-700">{task.operator_name || "-"}</td>
-                    <td className="px-3 py-2 text-slate-700">
-                      {task.lastCompleted
-                        ? new Date(task.lastCompleted).toLocaleDateString("es-ES")
-                        : "-"}
-                    </td>
-                    <td className="px-3 py-2 text-xs text-slate-600">{task.frequency}</td>
-                    <td className="px-3 py-2">
-                      <Badge
-                        variant="outline"
-                        className={`text-xs ${
+          const groupedArray = Object.values(grouped)
+
+          return (
+            <div className="overflow-x-auto rounded-lg border border-slate-200 shadow-sm">
+              <table className="w-full text-sm border-collapse">
+                <thead className="bg-slate-100">
+                  <tr>
+                    <th className="px-3 py-2 text-left font-semibold text-slate-700">Tarea</th>
+                    <th className="px-3 py-2 text-left font-semibold text-slate-700">Fecha</th>
+                    <th className="px-3 py-2 text-left font-semibold text-slate-700">Habitaciones</th>
+                    <th className="px-3 py-2 text-left font-semibold text-slate-700">Responsable</th>
+                    <th className="px-3 py-2 text-left font-semibold text-slate-700">Última vez</th>
+                    <th className="px-3 py-2 text-left font-semibold text-slate-700">Frecuencia</th>
+                    <th className="px-3 py-2 text-left font-semibold text-slate-700">Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {groupedArray.map((task: any, i: number) => {
+                    const today = new Date()
+                    const taskDate = new Date(task.date)
+                    const daysUntil = Math.ceil(
+                      (taskDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
+                    )
+                    const isOverdue = daysUntil < 0
+                    const isToday = daysUntil === 0
+
+                    // 🔹 Ordenar habitaciones y eliminar duplicados
+                    const uniqueRooms = [...new Set(task.rooms || [])].sort((a, b) =>
+                      a.localeCompare(b, "es", { numeric: true }),
+                    )
+
+                    return (
+                      <tr
+                        key={i}
+                        className={`border-b hover:bg-slate-50 ${
                           isOverdue
-                            ? "bg-red-100 text-red-800 border-red-300"
+                            ? "bg-red-50"
                             : isToday
-                            ? "bg-orange-100 text-orange-800 border-orange-300"
-                            : "bg-blue-100 text-blue-800 border-blue-300"
+                            ? "bg-orange-50"
+                            : "bg-blue-50"
                         }`}
                       >
-                        {isOverdue
-                          ? `Retraso ${Math.abs(daysUntil)}d`
-                          : isToday
-                          ? "Hoy"
-                          : `En ${daysUntil}d`}
-                      </Badge>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+                        <td className="px-3 py-2 font-medium text-slate-800">{task.type}</td>
+                        <td className="px-3 py-2 text-slate-700">
+                          {taskDate.toLocaleDateString("es-ES", {
+                            day: "2-digit",
+                            month: "short",
+                            year: "numeric",
+                          })}
+                        </td>
+                        <td className="px-3 py-2 text-slate-700 max-w-xs">
+                          {uniqueRooms.length > 0 ? (
+                            <span className="text-xs text-slate-700 block truncate">
+                              {uniqueRooms.slice(0, 12).join(", ")}
+                              {uniqueRooms.length > 12 && ` (+${uniqueRooms.length - 12})`}
+                            </span>
+                          ) : (
+                            "-"
+                          )}
+                        </td>
+                        <td className="px-3 py-2 text-slate-700">{task.operator_name || "-"}</td>
+                        <td className="px-3 py-2 text-slate-700">
+                          {task.lastCompleted
+                            ? new Date(task.lastCompleted).toLocaleDateString("es-ES")
+                            : "-"}
+                        </td>
+                        <td className="px-3 py-2 text-xs text-slate-600">{task.frequency}</td>
+                        <td className="px-3 py-2">
+                          <Badge
+                            variant="outline"
+                            className={`text-xs ${
+                              isOverdue
+                                ? "bg-red-100 text-red-800 border-red-300"
+                                : isToday
+                                ? "bg-orange-100 text-orange-800 border-orange-300"
+                                : "bg-blue-100 text-blue-800 border-blue-300"
+                            }`}
+                          >
+                            {isOverdue
+                              ? `Retraso ${Math.abs(daysUntil)}d`
+                              : isToday
+                              ? "Hoy"
+                              : `En ${daysUntil}d`}
+                          </Badge>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )
+        })()
       )}
     </CardContent>
   </Card>
 </TabsContent>
+
 
           <TabsContent value="history" className="space-y-6">
             <div className="grid gap-4 md:grid-cols-2">
@@ -1425,8 +1450,7 @@ export default function PreventiveMaintenance() {
           </div>
         </DialogContent>
       </Dialog>
-
-      <style jsx global>{`
+<style jsx global>{`
   @media print {
     /* 🧾 Configuración general de página */
     @page {
@@ -1468,7 +1492,7 @@ export default function PreventiveMaintenance() {
 
     /* 🏷️ Encabezado general de impresión */
     body::before {
-      content: "🏨 Mantenimiento Preventivo — 📅 Impreso el ${new Date().toLocaleDateString("es-ES")} — Tareas con Retraso o para Hoy";
+      content: "🏨 Mantenimiento Preventivo — 📅 Impreso el ${new Date().toLocaleDateString("es-ES")}";
       display: block;
       text-align: center;
       font-size: 12px;
@@ -1566,23 +1590,9 @@ export default function PreventiveMaintenance() {
     .Card {
       page-break-inside: avoid !important;
     }
-
-    /* 🧩 Solo imprimir filas con estado "Retraso" o "Hoy" */
-    table tbody tr {
-      display: none !important;
-    }
-
-    table tbody tr:has(td:last-child span:contains("Retraso")),
-    table tbody tr:has(td:last-child span:contains("Hoy")) {
-      display: table-row !important;
-    }
-
-    /* Mostrar la cabecera siempre */
-    thead {
-      display: table-header-group !important;
-    }
   }
 `}</style>
+
 
     </div>
   )
