@@ -578,176 +578,144 @@ export default function PreventiveMaintenance() {
           </TabsContent>
 
           <TabsContent value="calendar" className="space-y-6">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle>Tareas Próximas (7 días)</CardTitle>
-                  <CardDescription>Tareas programadas para los próximos 7 días</CardDescription>
-                </div>
-                <div className="flex gap-2 print:hidden">
-                  <Button variant="outline" size="sm" onClick={handlePrint}>
-                    <Printer className="h-4 w-4 mr-2" />
-                    Imprimir
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={async () => {
-                      setLoadingUpcoming(true)
-                      try {
-                        const res = await fetch(`/api/preventive-maintenance/upcoming?hotel=${hotel}`)
-                        const data = await res.json()
-                        setUpcomingTasks(data.tasks || [])
-                      } catch (err) {
-                        console.error("Error refrescando tareas:", err)
-                      } finally {
-                        setLoadingUpcoming(false)
-                      }
-                    }}
-                    disabled={loadingUpcoming}
+  <Card>
+    <CardHeader className="flex flex-row items-center justify-between">
+      <div>
+        <CardTitle>Tareas Pendientes</CardTitle>
+        <CardDescription>Fumigación y limpieza de filtros próximas o vencidas</CardDescription>
+      </div>
+      <div className="flex gap-2 print:hidden">
+        <Button variant="outline" size="sm" onClick={handlePrint}>
+          <Printer className="h-4 w-4 mr-2" />
+          Imprimir
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={async () => {
+            setLoadingUpcoming(true)
+            try {
+              const res = await fetch(`/api/preventive-maintenance/upcoming?hotel=${hotel}`)
+              const data = await res.json()
+              // ✅ Solo fumigación y limpieza de filtros
+              const filtered = (data.tasks || []).filter(
+                (t: any) =>
+                  t.type?.toLowerCase().includes("fumigación") ||
+                  t.type?.toLowerCase().includes("filtro"),
+              )
+              setUpcomingTasks(filtered)
+            } catch (err) {
+              console.error("Error refrescando tareas:", err)
+            } finally {
+              setLoadingUpcoming(false)
+            }
+          }}
+          disabled={loadingUpcoming}
+        >
+          {loadingUpcoming ? "Actualizando..." : "Actualizar"}
+        </Button>
+      </div>
+    </CardHeader>
+
+    <CardContent>
+      {loadingUpcoming ? (
+        <div className="text-center py-12 text-slate-500">
+          <Calendar className="h-10 w-10 mx-auto mb-3 opacity-50 animate-pulse" />
+          <p>Cargando tareas...</p>
+        </div>
+      ) : upcomingTasks.length === 0 ? (
+        <div className="text-center py-12 text-green-600">
+          <CheckCircle2 className="h-10 w-10 mx-auto mb-3" />
+          <p className="font-medium">No hay tareas pendientes en fumigación o filtros 🎉</p>
+        </div>
+      ) : (
+        <div className="overflow-x-auto rounded-lg border border-slate-200 shadow-sm">
+          <table className="w-full text-sm border-collapse">
+            <thead className="bg-slate-100">
+              <tr>
+                <th className="px-3 py-2 text-left font-semibold text-slate-700">Tarea</th>
+                <th className="px-3 py-2 text-left font-semibold text-slate-700">Fecha</th>
+                <th className="px-3 py-2 text-left font-semibold text-slate-700">Habitaciones</th>
+                <th className="px-3 py-2 text-left font-semibold text-slate-700">Responsable</th>
+                <th className="px-3 py-2 text-left font-semibold text-slate-700">Última vez</th>
+                <th className="px-3 py-2 text-left font-semibold text-slate-700">Frecuencia</th>
+                <th className="px-3 py-2 text-left font-semibold text-slate-700">Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              {upcomingTasks.map((task: any, i: number) => {
+                const today = new Date()
+                const taskDate = new Date(task.date)
+                const daysUntil = Math.ceil(
+                  (taskDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
+                )
+                const isOverdue = daysUntil < 0
+                const isToday = daysUntil === 0
+
+                return (
+                  <tr
+                    key={i}
+                    className={`border-b hover:bg-slate-50 ${
+                      isOverdue
+                        ? "bg-red-50"
+                        : isToday
+                        ? "bg-orange-50"
+                        : "bg-blue-50"
+                    }`}
                   >
-                    {loadingUpcoming ? "Actualizando..." : "Actualizar"}
-                  </Button>
-                </div>
-              </CardHeader>
-
-              <CardContent>
-                {loadingUpcoming ? (
-                  <div className="text-center py-12 text-slate-500">
-                    <Calendar className="h-10 w-10 mx-auto mb-3 opacity-50 animate-pulse" />
-                    <p>Cargando tareas...</p>
-                  </div>
-                ) : (
-                  (() => {
-                    const today = new Date()
-                    today.setHours(0, 0, 0, 0)
-                    const sevenDaysFromNow = new Date(today)
-                    sevenDaysFromNow.setDate(today.getDate() + 7)
-
-                    const weeklyTasks = upcomingTasks
-                      .map((task) => {
-                        const taskDate = new Date(task.date)
-                        const daysUntil = Math.ceil((taskDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
-                        return { ...task, taskDate, daysUntil }
-                      })
-                      .filter((t) => t.taskDate >= today && t.taskDate <= sevenDaysFromNow)
-                      .sort((a, b) => a.taskDate.getTime() - b.taskDate.getTime())
-
-                    if (weeklyTasks.length === 0) {
-                      return (
-                        <div className="text-center py-12 text-green-600">
-                          <CheckCircle2 className="h-10 w-10 mx-auto mb-3" />
-                          <p className="font-medium">No hay tareas pendientes para los próximos 7 días 🎉</p>
-                        </div>
-                      )
-                    }
-
-                    return (
-                      <div className="space-y-4">
-                        {weeklyTasks.map((task, i) => {
-                          const isOverdue = task.daysUntil < 0
-                          const isToday = task.daysUntil === 0
-
-                          return (
-                            <Card
-                              key={i}
-                              className={`border-l-4 ${
-                                isOverdue
-                                  ? "border-l-red-500 bg-red-50"
-                                  : isToday
-                                    ? "border-l-orange-500 bg-orange-50"
-                                    : "border-l-blue-500 bg-blue-50"
-                              }`}
-                            >
-                              <CardHeader className="pb-3">
-                                <div className="flex items-start justify-between">
-                                  <div className="flex-1">
-                                    <CardTitle className="text-base font-semibold">{task.type}</CardTitle>
-                                    <CardDescription className="text-sm mt-1">
-                                      {task.taskDate.toLocaleDateString("es-ES", {
-                                        weekday: "long",
-                                        year: "numeric",
-                                        month: "long",
-                                        day: "numeric",
-                                      })}
-                                    </CardDescription>
-                                  </div>
-                                  <Badge
-                                    variant="outline"
-                                    className={`${
-                                      isOverdue
-                                        ? "bg-red-100 text-red-800 border-red-300"
-                                        : isToday
-                                          ? "bg-orange-100 text-orange-800 border-orange-300"
-                                          : "bg-blue-100 text-blue-800 border-blue-300"
-                                    }`}
-                                  >
-                                    {isOverdue ? (
-                                      <>
-                                        <AlertTriangle className="h-3 w-3 mr-1" />
-                                        {Math.abs(task.daysUntil)} días de retraso
-                                      </>
-                                    ) : isToday ? (
-                                      <>
-                                        <Clock className="h-3 w-3 mr-1" />
-                                        Hoy
-                                      </>
-                                    ) : (
-                                      <>
-                                        <Calendar className="h-3 w-3 mr-1" />
-                                        En {task.daysUntil} días
-                                      </>
-                                    )}
-                                  </Badge>
-                                </div>
-                              </CardHeader>
-                              <CardContent className="space-y-2">
-                                {task.rooms && task.rooms.length > 0 && (
-                                  <div>
-                                    <p className="text-sm font-medium text-slate-700 mb-1">
-                                      {task.type.includes("filtro") ? "Filtros:" : "Habitaciones:"}
-                                    </p>
-                                    <div className="flex flex-wrap gap-1">
-                                      {task.rooms.slice(0, 10).map((room: string, idx: number) => (
-                                        <Badge key={idx} variant="outline" className="text-xs">
-                                          {room}
-                                        </Badge>
-                                      ))}
-                                      {task.rooms.length > 10 && (
-                                        <Badge variant="outline" className="text-xs">
-                                          +{task.rooms.length - 10} más
-                                        </Badge>
-                                      )}
-                                    </div>
-                                  </div>
-                                )}
-                                {task.operator_name && (
-                                  <p className="text-sm text-slate-600">
-                                    <strong>Último responsable:</strong> {task.operator_name}
-                                  </p>
-                                )}
-                                {task.lastCompleted && (
-                                  <p className="text-sm text-slate-600">
-                                    <strong>Última vez:</strong>{" "}
-                                    {new Date(task.lastCompleted).toLocaleDateString("es-ES")}
-                                  </p>
-                                )}
-                                {task.frequency && (
-                                  <p className="text-xs text-slate-500">
-                                    <strong>Frecuencia:</strong> {task.frequency}
-                                  </p>
-                                )}
-                              </CardContent>
-                            </Card>
-                          )
-                        })}
-                      </div>
-                    )
-                  })()
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
+                    <td className="px-3 py-2 font-medium text-slate-800">{task.type}</td>
+                    <td className="px-3 py-2 text-slate-700">
+                      {taskDate.toLocaleDateString("es-ES", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                      })}
+                    </td>
+                    <td className="px-3 py-2 text-slate-700 max-w-xs">
+                      {task.rooms && task.rooms.length > 0 ? (
+                        <span className="text-xs text-slate-700 block truncate">
+                          {task.rooms.slice(0, 10).join(", ")}
+                          {task.rooms.length > 10 && ` (+${task.rooms.length - 10})`}
+                        </span>
+                      ) : (
+                        "-"
+                      )}
+                    </td>
+                    <td className="px-3 py-2 text-slate-700">{task.operator_name || "-"}</td>
+                    <td className="px-3 py-2 text-slate-700">
+                      {task.lastCompleted
+                        ? new Date(task.lastCompleted).toLocaleDateString("es-ES")
+                        : "-"}
+                    </td>
+                    <td className="px-3 py-2 text-xs text-slate-600">{task.frequency}</td>
+                    <td className="px-3 py-2">
+                      <Badge
+                        variant="outline"
+                        className={`text-xs ${
+                          isOverdue
+                            ? "bg-red-100 text-red-800 border-red-300"
+                            : isToday
+                            ? "bg-orange-100 text-orange-800 border-orange-300"
+                            : "bg-blue-100 text-blue-800 border-blue-300"
+                        }`}
+                      >
+                        {isOverdue
+                          ? `Retraso ${Math.abs(daysUntil)}d`
+                          : isToday
+                          ? "Hoy"
+                          : `En ${daysUntil}d`}
+                      </Badge>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </CardContent>
+  </Card>
+</TabsContent>
 
           <TabsContent value="history" className="space-y-6">
             <div className="grid gap-4 md:grid-cols-2">
@@ -1459,74 +1427,163 @@ export default function PreventiveMaintenance() {
       </Dialog>
 
       <style jsx global>{`
-        @media print {
-          @page {
-            size: A4 landscape;
-            margin: 1cm;
-          }
-          
-          body {
-            background: white !important;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
-          }
-          
-          /* Hide navigation and buttons */
-          header,
-          nav,
-          button,
-          .print\\:hidden {
-            display: none !important;
-          }
-          
-          /* Show main content */
-          main {
-            display: block !important;
-          }
-          
-          /* Table styles for print */
-          table {
-            width: 100%;
-            border-collapse: collapse;
-            page-break-inside: auto;
-          }
-          
-          tr {
-            page-break-inside: avoid;
-            page-break-after: auto;
-          }
-          
-          thead {
-            display: table-header-group;
-          }
-          
-          th, td {
-            border: 1px solid #ccc !important;
-            padding: 8px !important;
-          }
-          
-          th {
-            background-color: #f1f5f9 !important;
-            font-weight: bold;
-          }
-          
-          /* Preserve row colors */
-          .bg-red-50 {
-            background-color: #fef2f2 !important;
-          }
-          
-          .bg-orange-50 {
-            background-color: #fff7ed !important;
-          }
-          
-          /* Card styles */
-          .card,
-          [class*="Card"] {
-            box-shadow: none !important;
-            border: 1px solid #ccc !important;
-          }
-        }
-      `}</style>
+  @media print {
+    /* 🧾 Configuración general de página */
+    @page {
+      size: A4 landscape;
+      margin: 1cm;
+    }
+
+    body {
+      background: white !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+      font-size: 10px !important;
+      line-height: 1.2 !important;
+      position: relative;
+    }
+
+    /* 🚫 Ocultar navegación, tabs y botones */
+    header,
+    nav,
+    button,
+    .print\\:hidden,
+    .TabsList,
+    [class*="tabs"],
+    [class*="TabsList"],
+    [class*="TabsTrigger"],
+    div[role="tablist"] {
+      display: none !important;
+      visibility: hidden !important;
+      height: 0 !important;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+
+    main {
+      display: block !important;
+      margin: 0;
+      padding: 0;
+    }
+
+    /* 🏷️ Encabezado general de impresión */
+    body::before {
+      content: "🏨 Mantenimiento Preventivo — 📅 Impreso el ${new Date().toLocaleDateString("es-ES")} — Tareas con Retraso o para Hoy";
+      display: block;
+      text-align: center;
+      font-size: 12px;
+      font-weight: 600;
+      color: #1e293b;
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 8px;
+      margin-bottom: 10px;
+      width: 100%;
+    }
+
+    /* 🗓️ Tablas del calendario */
+    table {
+      width: 100%;
+      border-collapse: collapse !important;
+      page-break-inside: auto;
+      font-size: 10px !important;
+    }
+
+    thead {
+      display: table-header-group;
+    }
+
+    tr {
+      page-break-inside: avoid;
+      page-break-after: auto;
+      height: 14px !important;
+    }
+
+    th,
+    td {
+      border: 1px solid #ccc !important;
+      padding: 2px 4px !important;
+      font-size: 9.5px !important;
+      line-height: 1.1 !important;
+      vertical-align: middle !important;
+    }
+
+    th {
+      background-color: #f1f5f9 !important;
+      font-weight: bold !important;
+      text-align: left !important;
+    }
+
+    /* 🎨 Colores de estado */
+    .bg-red-50 {
+      background-color: #fef2f2 !important;
+    }
+
+    .bg-orange-50 {
+      background-color: #fff7ed !important;
+    }
+
+    .bg-blue-50 {
+      background-color: #eff6ff !important;
+    }
+
+    /* 📦 Compactar tarjetas y eliminar sombras */
+    .card,
+    [class*="Card"],
+    .border,
+    .rounded-lg {
+      box-shadow: none !important;
+      border: 1px solid #ccc !important;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+
+    /* 🏷️ Ajustar badges */
+    .badge,
+    .Badge,
+    [class*="Badge"] {
+      font-size: 8.5px !important;
+      padding: 1px 3px !important;
+      line-height: 1 !important;
+      border-width: 1px !important;
+    }
+
+    /* 🔠 “Tareas Pendientes” más grande y destacado */
+    h2,
+    h3,
+    .text-xl,
+    .text-lg {
+      font-size: 14px !important;
+      font-weight: 700 !important;
+      text-align: center !important;
+      color: #0f172a !important;
+      margin-bottom: 6px !important;
+    }
+
+    /* Evitar saltos dentro de tarjetas */
+    .card,
+    .Card {
+      page-break-inside: avoid !important;
+    }
+
+    /* 🧩 Solo imprimir filas con estado "Retraso" o "Hoy" */
+    table tbody tr {
+      display: none !important;
+    }
+
+    table tbody tr:has(td:last-child span:contains("Retraso")),
+    table tbody tr:has(td:last-child span:contains("Hoy")) {
+      display: table-row !important;
+    }
+
+    /* Mostrar la cabecera siempre */
+    thead {
+      display: table-header-group !important;
+    }
+  }
+`}</style>
+
     </div>
   )
 }
