@@ -48,6 +48,19 @@ export default function PreventiveMaintenance() {
   const [selectedDayTasks, setSelectedDayTasks] = useState<any[]>([])
   const [dayDialogOpen, setDayDialogOpen] = useState(false)
 
+  const [externalMaintenanceDialogOpen, setExternalMaintenanceDialogOpen] = useState(false)
+  const [selectedExternalTask, setSelectedExternalTask] = useState<{
+    id: number
+    name: string
+    taskType: string
+  } | null>(null)
+  const [externalDate, setExternalDate] = useState(new Date().toISOString().split("T")[0])
+  const [externalWorkDone, setExternalWorkDone] = useState("")
+  const [externalOperator, setExternalOperator] = useState("")
+  const [externalHotelPerson, setExternalHotelPerson] = useState("")
+  const [externalMaterials, setExternalMaterials] = useState<{ quantity: string; reference: string }[]>([])
+  const [externalObservations, setExternalObservations] = useState("")
+
   const params = useParams()
   const hotel = params.hotel as string
   const hotelName = hotel === "caledonian" ? "Hotel Caledonian" : hotel === "chi" ? "Hotel Chi" : hotel
@@ -432,6 +445,27 @@ export default function PreventiveMaintenance() {
     if (taskId === 3) return setFilterCleaningDialogOpen(true)
     if (taskId === 22) return setShowerGroutDialogOpen(true)
 
+    const externalTasks: Record<number, { name: string; taskType: string }> = {
+      13: { name: "Revisión aire acondicionado", taskType: "aire_acondicionado" },
+      14: { name: "Grupo electrógeno", taskType: "grupo_electrogeno" },
+      15: { name: "Alarma y extintores", taskType: "alarma_extintores" },
+      16: { name: "Control legionela", taskType: "control_legionela" },
+      17: { name: "Control de plagas", taskType: "control_plagas" },
+      18: { name: "Revisión ascensor y montacargas", taskType: "ascensor_montacargas" },
+    }
+
+    if (externalTasks[taskId]) {
+      setSelectedExternalTask({ id: taskId, ...externalTasks[taskId] })
+      setExternalDate(new Date().toISOString().split("T")[0])
+      setExternalWorkDone("")
+      setExternalOperator("")
+      setExternalHotelPerson("")
+      setExternalMaterials([])
+      setExternalObservations("")
+      setExternalMaintenanceDialogOpen(true)
+      return
+    }
+
     // 🆕 Para las tareas genéricas → abrimos el diálogo visual
     setSelectedGenericTask(task)
     setGenericOperator("")
@@ -465,6 +499,45 @@ export default function PreventiveMaintenance() {
         return task.rooms.some((room: string) => room.toLowerCase().includes(roomSearchQuery.toLowerCase()))
       })
     : upcomingTasks
+
+  const handleExternalMaintenanceSubmit = async () => {
+    if (!externalOperator.trim()) {
+      alert("Por favor ingresa el nombre del operario")
+      return
+    }
+
+    try {
+      const response = await fetch("/api/external-maintenance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          hotel,
+          taskType: selectedExternalTask?.taskType,
+          date: externalDate,
+          workDone: externalWorkDone.trim() || null,
+          operatorName: externalOperator.trim(),
+          hotelPersonPresent: externalHotelPerson.trim() || null,
+          replacementMaterials: externalMaterials.filter((m) => m.quantity || m.reference),
+          observations: externalObservations.trim() || null,
+        }),
+      })
+
+      if (!response.ok) throw new Error("Error al registrar mantenimiento externo")
+
+      alert(`${selectedExternalTask?.name} registrado exitosamente`)
+      setExternalMaintenanceDialogOpen(false)
+      setTasks(
+        tasks.map((task) =>
+          task.id === selectedExternalTask?.id
+            ? { ...task, status: "completed" as const, lastCompleted: new Date().toLocaleDateString() }
+            : task,
+        ),
+      )
+    } catch (error) {
+      console.error("Error:", error)
+      alert("Error al registrar el mantenimiento externo")
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
@@ -578,169 +651,163 @@ export default function PreventiveMaintenance() {
           </TabsContent>
 
           <TabsContent value="calendar" className="space-y-6">
-  <Card>
-    <CardHeader className="flex flex-row items-center justify-between">
-      <div>
-        <CardTitle>Tareas Pendientes</CardTitle>
-        <CardDescription>Fumigación y limpieza de filtros próximas o vencidas</CardDescription>
-      </div>
-      <div className="flex gap-2 print:hidden">
-        <Button variant="outline" size="sm" onClick={handlePrint}>
-          <Printer className="h-4 w-4 mr-2" />
-          Imprimir
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={async () => {
-            setLoadingUpcoming(true)
-            try {
-              const res = await fetch(`/api/preventive-maintenance/upcoming?hotel=${hotel}`)
-              const data = await res.json()
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Tareas Pendientes</CardTitle>
+                  <CardDescription>Fumigación y limpieza de filtros próximas o vencidas</CardDescription>
+                </div>
+                <div className="flex gap-2 print:hidden">
+                  <Button variant="outline" size="sm" onClick={handlePrint}>
+                    <Printer className="h-4 w-4 mr-2" />
+                    Imprimir
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      setLoadingUpcoming(true)
+                      try {
+                        const res = await fetch(`/api/preventive-maintenance/upcoming?hotel=${hotel}`)
+                        const data = await res.json()
 
-              // ✅ Solo Fumigación y Limpieza de filtros
-              const filtered = (data.tasks || []).filter(
-                (t: any) =>
-                  t.type?.toLowerCase().includes("fumigación") ||
-                  t.type?.toLowerCase().includes("filtro"),
-              )
-              setUpcomingTasks(filtered)
-            } catch (err) {
-              console.error("Error refrescando tareas:", err)
-            } finally {
-              setLoadingUpcoming(false)
-            }
-          }}
-          disabled={loadingUpcoming}
-        >
-          {loadingUpcoming ? "Actualizando..." : "Actualizar"}
-        </Button>
-      </div>
-    </CardHeader>
+                        // ✅ Solo Fumigación y Limpieza de filtros
+                        const filtered = (data.tasks || []).filter(
+                          (t: any) =>
+                            t.type?.toLowerCase().includes("fumigación") || t.type?.toLowerCase().includes("filtro"),
+                        )
+                        setUpcomingTasks(filtered)
+                      } catch (err) {
+                        console.error("Error refrescando tareas:", err)
+                      } finally {
+                        setLoadingUpcoming(false)
+                      }
+                    }}
+                    disabled={loadingUpcoming}
+                  >
+                    {loadingUpcoming ? "Actualizando..." : "Actualizar"}
+                  </Button>
+                </div>
+              </CardHeader>
 
-    <CardContent>
-      {loadingUpcoming ? (
-        <div className="text-center py-12 text-slate-500">
-          <Calendar className="h-10 w-10 mx-auto mb-3 opacity-50 animate-pulse" />
-          <p>Cargando tareas...</p>
-        </div>
-      ) : upcomingTasks.length === 0 ? (
-        <div className="text-center py-12 text-green-600">
-          <CheckCircle2 className="h-10 w-10 mx-auto mb-3" />
-          <p className="font-medium">No hay tareas pendientes en fumigación o filtros 🎉</p>
-        </div>
-      ) : (
-        (() => {
-          // ✅ Agrupar tareas por tipo + fecha + responsable + frecuencia
-          const grouped = upcomingTasks.reduce((acc: any, task: any) => {
-            const key = `${task.type}-${task.date}-${task.operator_name || ""}-${task.frequency || ""}`
-            if (!acc[key]) acc[key] = { ...task, rooms: [] }
-            if (Array.isArray(task.rooms)) {
-              acc[key].rooms.push(...task.rooms)
-            } else if (typeof task.rooms === "string" && task.rooms.trim() !== "") {
-              acc[key].rooms.push(task.rooms)
-            }
-            return acc
-          }, {})
+              <CardContent>
+                {loadingUpcoming ? (
+                  <div className="text-center py-12 text-slate-500">
+                    <Calendar className="h-10 w-10 mx-auto mb-3 opacity-50 animate-pulse" />
+                    <p>Cargando tareas...</p>
+                  </div>
+                ) : upcomingTasks.length === 0 ? (
+                  <div className="text-center py-12 text-green-600">
+                    <CheckCircle2 className="h-10 w-10 mx-auto mb-3" />
+                    <p className="font-medium">No hay tareas pendientes en fumigación o filtros 🎉</p>
+                  </div>
+                ) : (
+                  (() => {
+                    // ✅ Agrupar tareas por tipo + fecha + responsable + frecuencia
+                    const grouped = upcomingTasks.reduce((acc: any, task: any) => {
+                      const key = `${task.type}-${task.date}-${task.operator_name || ""}-${task.frequency || ""}`
+                      if (!acc[key]) acc[key] = { ...task, rooms: [] }
+                      if (Array.isArray(task.rooms)) {
+                        acc[key].rooms.push(...task.rooms)
+                      } else if (typeof task.rooms === "string" && task.rooms.trim() !== "") {
+                        acc[key].rooms.push(task.rooms)
+                      }
+                      return acc
+                    }, {})
 
-          const groupedArray = Object.values(grouped)
-
-          return (
-            <div className="overflow-x-auto rounded-lg border border-slate-200 shadow-sm">
-              <table className="w-full text-sm border-collapse">
-                <thead className="bg-slate-100">
-                  <tr>
-                    <th className="px-3 py-2 text-left font-semibold text-slate-700">Tarea</th>
-                    <th className="px-3 py-2 text-left font-semibold text-slate-700">Fecha</th>
-                    <th className="px-3 py-2 text-left font-semibold text-slate-700">Habitaciones</th>
-                    <th className="px-3 py-2 text-left font-semibold text-slate-700">Responsable</th>
-                    <th className="px-3 py-2 text-left font-semibold text-slate-700">Última vez</th>
-                    <th className="px-3 py-2 text-left font-semibold text-slate-700">Frecuencia</th>
-                    <th className="px-3 py-2 text-left font-semibold text-slate-700">Estado</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {groupedArray.map((task: any, i: number) => {
-                    const today = new Date()
-                    const taskDate = new Date(task.date)
-                    const daysUntil = Math.ceil(
-                      (taskDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
-                    )
-                    const isOverdue = daysUntil < 0
-                    const isToday = daysUntil === 0
-
-                    // 🔹 Ordenar habitaciones y eliminar duplicados
-                    const uniqueRooms = [...new Set(task.rooms || [])].sort((a, b) =>
-                      a.localeCompare(b, "es", { numeric: true }),
-                    )
+                    const groupedArray = Object.values(grouped)
 
                     return (
-                      <tr
-                        key={i}
-                        className={`border-b hover:bg-slate-50 ${
-                          isOverdue
-                            ? "bg-red-50"
-                            : isToday
-                            ? "bg-orange-50"
-                            : "bg-blue-50"
-                        }`}
-                      >
-                        <td className="px-3 py-2 font-medium text-slate-800">{task.type}</td>
-                        <td className="px-3 py-2 text-slate-700">
-                          {taskDate.toLocaleDateString("es-ES", {
-                            day: "2-digit",
-                            month: "short",
-                            year: "numeric",
-                          })}
-                        </td>
-                        <td className="px-3 py-2 text-slate-700 max-w-xs">
-                          {uniqueRooms.length > 0 ? (
-                            <span className="text-xs text-slate-700 block truncate">
-                              {uniqueRooms.slice(0, 12).join(", ")}
-                              {uniqueRooms.length > 12 && ` (+${uniqueRooms.length - 12})`}
-                            </span>
-                          ) : (
-                            "-"
-                          )}
-                        </td>
-                        <td className="px-3 py-2 text-slate-700">{task.operator_name || "-"}</td>
-                        <td className="px-3 py-2 text-slate-700">
-                          {task.lastCompleted
-                            ? new Date(task.lastCompleted).toLocaleDateString("es-ES")
-                            : "-"}
-                        </td>
-                        <td className="px-3 py-2 text-xs text-slate-600">{task.frequency}</td>
-                        <td className="px-3 py-2">
-                          <Badge
-                            variant="outline"
-                            className={`text-xs ${
-                              isOverdue
-                                ? "bg-red-100 text-red-800 border-red-300"
-                                : isToday
-                                ? "bg-orange-100 text-orange-800 border-orange-300"
-                                : "bg-blue-100 text-blue-800 border-blue-300"
-                            }`}
-                          >
-                            {isOverdue
-                              ? `Retraso ${Math.abs(daysUntil)}d`
-                              : isToday
-                              ? "Hoy"
-                              : `En ${daysUntil}d`}
-                          </Badge>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )
-        })()
-      )}
-    </CardContent>
-  </Card>
-</TabsContent>
+                      <div className="overflow-x-auto rounded-lg border border-slate-200 shadow-sm">
+                        <table className="w-full text-sm border-collapse">
+                          <thead className="bg-slate-100">
+                            <tr>
+                              <th className="px-3 py-2 text-left font-semibold text-slate-700">Tarea</th>
+                              <th className="px-3 py-2 text-left font-semibold text-slate-700">Fecha</th>
+                              <th className="px-3 py-2 text-left font-semibold text-slate-700">Habitaciones</th>
+                              <th className="px-3 py-2 text-left font-semibold text-slate-700">Responsable</th>
+                              <th className="px-3 py-2 text-left font-semibold text-slate-700">Última vez</th>
+                              <th className="px-3 py-2 text-left font-semibold text-slate-700">Frecuencia</th>
+                              <th className="px-3 py-2 text-left font-semibold text-slate-700">Estado</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {groupedArray.map((task: any, i: number) => {
+                              const today = new Date()
+                              const taskDate = new Date(task.date)
+                              const daysUntil = Math.ceil(
+                                (taskDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
+                              )
+                              const isOverdue = daysUntil < 0
+                              const isToday = daysUntil === 0
 
+                              // 🔹 Ordenar habitaciones y eliminar duplicados
+                              const uniqueRooms = [...new Set(task.rooms || [])].sort((a, b) =>
+                                a.localeCompare(b, "es", { numeric: true }),
+                              )
+
+                              return (
+                                <tr
+                                  key={i}
+                                  className={`border-b hover:bg-slate-50 ${
+                                    isOverdue ? "bg-red-50" : isToday ? "bg-orange-50" : "bg-blue-50"
+                                  }`}
+                                >
+                                  <td className="px-3 py-2 font-medium text-slate-800">{task.type}</td>
+                                  <td className="px-3 py-2 text-slate-700">
+                                    {taskDate.toLocaleDateString("es-ES", {
+                                      day: "2-digit",
+                                      month: "short",
+                                      year: "numeric",
+                                    })}
+                                  </td>
+                                  <td className="px-3 py-2 text-slate-700 max-w-xs">
+                                    {uniqueRooms.length > 0 ? (
+                                      <span className="text-xs text-slate-700 block truncate">
+                                        {uniqueRooms.slice(0, 12).join(", ")}
+                                        {uniqueRooms.length > 12 && ` (+${uniqueRooms.length - 12})`}
+                                      </span>
+                                    ) : (
+                                      "-"
+                                    )}
+                                  </td>
+                                  <td className="px-3 py-2 text-slate-700">{task.operator_name || "-"}</td>
+                                  <td className="px-3 py-2 text-slate-700">
+                                    {task.lastCompleted
+                                      ? new Date(task.lastCompleted).toLocaleDateString("es-ES")
+                                      : "-"}
+                                  </td>
+                                  <td className="px-3 py-2 text-xs text-slate-600">{task.frequency}</td>
+                                  <td className="px-3 py-2">
+                                    <Badge
+                                      variant="outline"
+                                      className={`text-xs ${
+                                        isOverdue
+                                          ? "bg-red-100 text-red-800 border-red-300"
+                                          : isToday
+                                            ? "bg-orange-100 text-orange-800 border-orange-300"
+                                            : "bg-blue-100 text-blue-800 border-blue-300"
+                                      }`}
+                                    >
+                                      {isOverdue
+                                        ? `Retraso ${Math.abs(daysUntil)}d`
+                                        : isToday
+                                          ? "Hoy"
+                                          : `En ${daysUntil}d`}
+                                    </Badge>
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )
+                  })()
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           <TabsContent value="history" className="space-y-6">
             <div className="grid gap-4 md:grid-cols-2">
@@ -850,6 +917,114 @@ export default function PreventiveMaintenance() {
                     <Button className="w-full">
                       <History className="h-4 w-4 mr-2" />
                       Ver Revisión
+                    </Button>
+                  </Link>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Wind className="h-5 w-5 text-blue-600" />
+                    Historial: Revisión Aire Acondicionado
+                  </CardTitle>
+                  <CardDescription>Ver todas las revisiones registradas</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Link href={`/${hotel}/preventivo/mantenimiento-externo/aire_acondicionado`}>
+                    <Button className="w-full">
+                      <History className="h-4 w-4 mr-2" />
+                      Ver Historial
+                    </Button>
+                  </Link>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Zap className="h-5 w-5 text-yellow-600" />
+                    Historial: Grupo Electrógeno
+                  </CardTitle>
+                  <CardDescription>Ver todas las revisiones registradas</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Link href={`/${hotel}/preventivo/mantenimiento-externo/grupo_electrogeno`}>
+                    <Button className="w-full">
+                      <History className="h-4 w-4 mr-2" />
+                      Ver Historial
+                    </Button>
+                  </Link>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Bell className="h-5 w-5 text-red-600" />
+                    Historial: Alarma y Extintores
+                  </CardTitle>
+                  <CardDescription>Ver todas las revisiones registradas</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Link href={`/${hotel}/preventivo/mantenimiento-externo/alarma_extintores`}>
+                    <Button className="w-full">
+                      <History className="h-4 w-4 mr-2" />
+                      Ver Historial
+                    </Button>
+                  </Link>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <AlertTriangle className="h-5 w-5 text-orange-600" />
+                    Historial: Control Legionela
+                  </CardTitle>
+                  <CardDescription>Ver todas las revisiones registradas</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Link href={`/${hotel}/preventivo/mantenimiento-externo/control_legionela`}>
+                    <Button className="w-full">
+                      <History className="h-4 w-4 mr-2" />
+                      Ver Historial
+                    </Button>
+                  </Link>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Bug className="h-5 w-5 text-green-600" />
+                    Historial: Control de Plagas
+                  </CardTitle>
+                  <CardDescription>Ver todas las revisiones registradas</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Link href={`/${hotel}/preventivo/mantenimiento-externo/control_plagas`}>
+                    <Button className="w-full">
+                      <History className="h-4 w-4 mr-2" />
+                      Ver Historial
+                    </Button>
+                  </Link>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Wrench className="h-5 w-5 text-indigo-600" />
+                    Historial: Ascensor y Montacargas
+                  </CardTitle>
+                  <CardDescription>Ver todas las revisiones registradas</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Link href={`/${hotel}/preventivo/mantenimiento-externo/ascensor_montacargas`}>
+                    <Button className="w-full">
+                      <History className="h-4 w-4 mr-2" />
+                      Ver Historial
                     </Button>
                   </Link>
                 </CardContent>
@@ -1450,7 +1625,156 @@ export default function PreventiveMaintenance() {
           </div>
         </DialogContent>
       </Dialog>
-<style jsx global>{`
+
+      <Dialog open={externalMaintenanceDialogOpen} onOpenChange={setExternalMaintenanceDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader className="space-y-1">
+            <DialogTitle className="text-lg font-semibold">Completar {selectedExternalTask?.name}</DialogTitle>
+            <DialogDescription className="text-slate-600">
+              Ingresa los detalles del mantenimiento realizado
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-5 mt-4">
+            {/* Fecha */}
+            <div className="space-y-2">
+              <Label htmlFor="external-date" className="font-medium text-sm text-slate-800">
+                Fecha *
+              </Label>
+              <Input
+                id="external-date"
+                type="date"
+                value={externalDate}
+                onChange={(e) => setExternalDate(e.target.value)}
+                className="w-full"
+              />
+            </div>
+
+            {/* Qué han hecho */}
+            <div className="space-y-2">
+              <Label htmlFor="external-work-done" className="font-medium text-sm text-slate-800">
+                ¿Qué han hecho?
+              </Label>
+              <Textarea
+                id="external-work-done"
+                value={externalWorkDone}
+                onChange={(e) => setExternalWorkDone(e.target.value)}
+                placeholder="Describe el trabajo realizado..."
+                rows={3}
+                className="resize-none"
+              />
+            </div>
+
+            {/* Nombre del operario */}
+            <div className="space-y-2">
+              <Label htmlFor="external-operator" className="font-medium text-sm text-slate-800">
+                Nombre del operario *
+              </Label>
+              <select
+                id="external-operator"
+                value={externalOperator}
+                onChange={(e) => setExternalOperator(e.target.value)}
+                className="w-full border border-slate-300 rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              >
+                <option value="">Seleccionar operario...</option>
+                <option value="xavi">Xavi</option>
+                <option value="john">John</option>
+                <option value="julie">Julie</option>
+                <option value="antonia">Antonia</option>
+                <option value="xavi/john">Xavi/John</option>
+              </select>
+            </div>
+
+            {/* Persona del hotel presente */}
+            <div className="space-y-2">
+              <Label htmlFor="external-hotel-person" className="font-medium text-sm text-slate-800">
+                Persona del hotel presente
+              </Label>
+              <Input
+                id="external-hotel-person"
+                value={externalHotelPerson}
+                onChange={(e) => setExternalHotelPerson(e.target.value)}
+                placeholder="Nombre de la persona del hotel"
+              />
+            </div>
+
+            {/* Material de repuesto */}
+            <div className="space-y-2">
+              <Label className="font-medium text-sm text-slate-800">Material de repuesto comprado</Label>
+              <div className="space-y-2">
+                {externalMaterials.map((material, index) => (
+                  <div key={index} className="flex gap-2">
+                    <Input
+                      placeholder="Cantidad"
+                      value={material.quantity}
+                      onChange={(e) => {
+                        const newMaterials = [...externalMaterials]
+                        newMaterials[index].quantity = e.target.value
+                        setExternalMaterials(newMaterials)
+                      }}
+                      className="w-1/3"
+                    />
+                    <Input
+                      placeholder="Nº de referencia"
+                      value={material.reference}
+                      onChange={(e) => {
+                        const newMaterials = [...externalMaterials]
+                        newMaterials[index].reference = e.target.value
+                        setExternalMaterials(newMaterials)
+                      }}
+                      className="flex-1"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setExternalMaterials(externalMaterials.filter((_, i) => i !== index))
+                      }}
+                    >
+                      Eliminar
+                    </Button>
+                  </div>
+                ))}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setExternalMaterials([...externalMaterials, { quantity: "", reference: "" }])}
+                  className="w-full"
+                >
+                  + Añadir material
+                </Button>
+              </div>
+            </div>
+
+            {/* Observaciones */}
+            <div className="space-y-2">
+              <Label htmlFor="external-observations" className="font-medium text-sm text-slate-800">
+                Observaciones
+              </Label>
+              <Textarea
+                id="external-observations"
+                value={externalObservations}
+                onChange={(e) => setExternalObservations(e.target.value)}
+                placeholder="Observaciones adicionales..."
+                rows={3}
+                className="resize-none"
+              />
+            </div>
+
+            {/* Botones */}
+            <div className="flex gap-2 pt-3">
+              <Button variant="outline" onClick={() => setExternalMaintenanceDialogOpen(false)} className="flex-1">
+                Cancelar
+              </Button>
+              <Button onClick={handleExternalMaintenanceSubmit} className="flex-1 bg-blue-600 hover:bg-blue-700">
+                Guardar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <style jsx global>{`
   @media print {
     /* 🧾 Configuración general de página */
     @page {
@@ -1592,8 +1916,6 @@ export default function PreventiveMaintenance() {
     }
   }
 `}</style>
-
-
     </div>
   )
 }

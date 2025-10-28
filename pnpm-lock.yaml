@@ -18,7 +18,7 @@ importers:
         specifier: latest
         version: 3.0.7(@azure/identity@4.13.0)
       '@neondatabase/serverless':
-        specifier: 1.0.2
+        specifier: latest
         version: 1.0.2
       '@radix-ui/react-accordion':
         specifier: 1.2.2
@@ -3479,7 +3479,7 @@ snapshots:
 
   '@types/pg@8.15.5':
     dependencies:
-      '@types/node': 22.0.0
+      '@types/node': 22.18.8
       pg-protocol: 1.10.3
       pg-types: 2.2.0
 
