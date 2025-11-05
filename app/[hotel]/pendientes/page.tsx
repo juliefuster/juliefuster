@@ -73,7 +73,7 @@ export default function PendingIssues() {
         .select("*")
         .eq("hotel", hotel)
         .ilike("status", "%pendiente%")
-        .order("created_at", { ascending: false })
+        .order("location", { ascending: true })
 
       if (error) throw error
       setIssues(data || [])
