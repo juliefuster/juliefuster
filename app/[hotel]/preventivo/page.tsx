@@ -1269,6 +1269,26 @@ export default function PreventiveMaintenance() {
             <div className="space-y-2">
               <Label className="font-medium text-sm text-slate-800">Filtros Limpiados (Habitaciones) *</Label>
               <div className="grid grid-cols-6 gap-2 mt-2 max-h-56 overflow-y-auto p-3 border rounded-lg bg-slate-50">
+                <div className="flex items-center space-x-2 col-span-2">
+                  <Checkbox
+                    id="room-rejilla-desayunos"
+                    checked={selectedFilters.includes("rejilla desayunos")}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setSelectedFilters([...selectedFilters, "rejilla desayunos"])
+                      } else {
+                        setSelectedFilters(selectedFilters.filter((r) => r !== "rejilla desayunos"))
+                      }
+                    }}
+                  />
+                  <label
+                    htmlFor="room-rejilla-desayunos"
+                    className="text-sm cursor-pointer leading-tight break-words text-slate-700 font-medium"
+                  >
+                    Rejilla desayunos
+                  </label>
+                </div>
+                {/* </CHANGE> */}
                 {rooms.map((room) => (
                   <div key={room} className="flex items-center space-x-2">
                     <Checkbox

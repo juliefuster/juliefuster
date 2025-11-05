@@ -2,12 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { createClient } from "@/lib/supabase/client"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -57,7 +52,7 @@ const ROOM_SECTIONS = {
     "Pica",
     "WC",
     "Boton descarga",
-    "Jabonera"
+    "Jabonera", // Added missing comma
     "Ducha / Bañera",
     "Borada",
     "Marco puerta ducha",
@@ -68,13 +63,24 @@ const ROOM_SECTIONS = {
     "Suelo baño",
     "Techo baño",
     "Paredes baño",
-    "Puerta baño", 
+    "Puerta baño",
     "ventana",
     "Toallero",
     "Colgadores",
     "Porta rollo papel higienico",
   ],
-  "Terraza/Balcón": ["Barandilla","Cristal separadaor /divisorio", "Pavimento", "Desagüe", "Mobiliario","Luces","Grifo","Suelo","Pared","puerta terraza"],
+  "Terraza/Balcón": [
+    "Barandilla",
+    "Cristal separadaor /divisorio",
+    "Pavimento",
+    "Desagüe",
+    "Mobiliario",
+    "Luces",
+    "Grifo",
+    "Suelo",
+    "Pared",
+    "puerta terraza",
+  ],
 }
 
 export function RoomInspectionModal({
@@ -94,8 +100,7 @@ export function RoomInspectionModal({
   const [notes, setNotes] = useState("")
 
   // ✅ Detectar si es una zona común o una habitación
-  const isCommonArea =
-    room?.is_common_area === true || !/^\d+$/.test(String(room?.room_number ?? ""))
+  const isCommonArea = room?.is_common_area === true || !/^\d+$/.test(String(room?.room_number ?? ""))
 
   useEffect(() => {
     if (!isCommonArea) {
@@ -133,11 +138,7 @@ export function RoomInspectionModal({
     }
   }
 
-  const handleStatusChange = (
-    section: string,
-    element: string,
-    status: InspectionItem["status"]
-  ) => {
+  const handleStatusChange = (section: string, element: string, status: InspectionItem["status"]) => {
     const key = `${section}-${element}`
     setInspections((prev) => ({
       ...prev,
@@ -185,11 +186,7 @@ export function RoomInspectionModal({
       }
 
       // Si es habitación numerada, guardar inspección completa
-      await supabase
-        .from("room_inspections")
-        .delete()
-        .eq("hotel", hotel)
-        .eq("room_number", room.room_number)
+      await supabase.from("room_inspections").delete().eq("hotel", hotel).eq("room_number", room.room_number)
 
       const inspectionRecords = Object.values(inspections).map((item) => ({
         hotel,
@@ -231,18 +228,14 @@ export function RoomInspectionModal({
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-2xl">
-            {isCommonArea
-              ? `Zona común — ${room.room_number}`
-              : `Habitación ${room.room_number}`}
+            {isCommonArea ? `Zona común — ${room.room_number}` : `Habitación ${room.room_number}`}
           </DialogTitle>
         </DialogHeader>
 
         {/* 🟡 Si es zona común → solo campo de notas */}
         {isCommonArea ? (
           <div className="space-y-4 py-4">
-            <label className="block text-sm font-medium text-slate-700">
-              Nota de revisión
-            </label>
+            <label className="block text-sm font-medium text-slate-700">Nota de revisión</label>
             <Textarea
               placeholder="Escribe observaciones, incidencias o acciones realizadas..."
               value={notes}
@@ -251,9 +244,7 @@ export function RoomInspectionModal({
             />
           </div>
         ) : loading ? (
-          <div className="py-8 text-center text-slate-600">
-            Cargando inspección...
-          </div>
+          <div className="py-8 text-center text-slate-600">Cargando inspección...</div>
         ) : (
           /* 🏨 Si es habitación numerada → pestañas completas */
           <Tabs defaultValue="Dormitorio" className="w-full">
@@ -271,26 +262,15 @@ export function RoomInspectionModal({
                   const status = inspection?.status || "pendiente"
 
                   return (
-                    <div
-                      key={element}
-                      className="border rounded-lg p-4 space-y-3"
-                    >
+                    <div key={element} className="border rounded-lg p-4 space-y-3">
                       <div className="flex items-center justify-between">
                         <h4 className="font-medium text-slate-900">{element}</h4>
                         <div className="flex gap-2">
                           <Button
                             size="sm"
-                            variant={
-                              status === "correcto" ? "default" : "outline"
-                            }
-                            className={
-                              status === "correcto"
-                                ? getStatusColor("correcto")
-                                : ""
-                            }
-                            onClick={() =>
-                              handleStatusChange(section, element, "correcto")
-                            }
+                            variant={status === "correcto" ? "default" : "outline"}
+                            className={status === "correcto" ? getStatusColor("correcto") : ""}
+                            onClick={() => handleStatusChange(section, element, "correcto")}
                           >
                             <CheckCircle className="h-4 w-4 mr-1" />
                             Correcto
@@ -298,17 +278,9 @@ export function RoomInspectionModal({
 
                           <Button
                             size="sm"
-                            variant={
-                              status === "pendiente" ? "default" : "outline"
-                            }
-                            className={
-                              status === "pendiente"
-                                ? getStatusColor("pendiente")
-                                : ""
-                            }
-                            onClick={() =>
-                              handleStatusChange(section, element, "pendiente")
-                            }
+                            variant={status === "pendiente" ? "default" : "outline"}
+                            className={status === "pendiente" ? getStatusColor("pendiente") : ""}
+                            onClick={() => handleStatusChange(section, element, "pendiente")}
                           >
                             <AlertCircle className="h-4 w-4 mr-1" />
                             Pendiente
@@ -316,17 +288,9 @@ export function RoomInspectionModal({
 
                           <Button
                             size="sm"
-                            variant={
-                              status === "reparado" ? "default" : "outline"
-                            }
-                            className={
-                              status === "reparado"
-                                ? getStatusColor("reparado")
-                                : ""
-                            }
-                            onClick={() =>
-                              handleStatusChange(section, element, "reparado")
-                            }
+                            variant={status === "reparado" ? "default" : "outline"}
+                            className={status === "reparado" ? getStatusColor("reparado") : ""}
+                            onClick={() => handleStatusChange(section, element, "reparado")}
                           >
                             <Wrench className="h-4 w-4 mr-1" />
                             Reparado
@@ -337,9 +301,7 @@ export function RoomInspectionModal({
                       <Textarea
                         placeholder="Comentarios adicionales..."
                         value={inspection?.notes || ""}
-                        onChange={(e) =>
-                          handleNotesChange(section, element, e.target.value)
-                        }
+                        onChange={(e) => handleNotesChange(section, element, e.target.value)}
                         className="text-sm"
                       />
                     </div>
