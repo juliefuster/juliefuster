@@ -52,7 +52,7 @@ const ROOM_SECTIONS = {
     "Pica",
     "WC",
     "Boton descarga",
-    "Jabonera", // Added missing comma
+    "Jabonera",
     "Ducha / Bañera",
     "Borada",
     "Marco puerta ducha",
