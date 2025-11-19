@@ -9,6 +9,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     const { data, error } = await supabase
       .from("inventario")
       .update({
+        hotel: body.hotel,
         nombre: body.nombre,
         departamento: body.departamento,
         cantidad_actual: body.cantidad_actual,

@@ -30,11 +30,13 @@ interface InventoryItem {
   ultima_salida: string | null
   responsable: string
   notas: string
+  hotel?: string
 }
 
 const DEPARTAMENTOS = ["Pisos", "Recepción", "Mantenimiento", "Cocina", "Bar", "Administración"]
 const FRECUENCIAS = ["Mensual", "Semanal", "Quincenal", "Anual", "Bajo demanda"]
 const UNIDADES = ["Unidades", "Litros", "Kilogramos", "Cajas", "Paquetes", "Metros"]
+const HOTELES = ["Chi", "Caledonian"]
 
 export default function StockManagement() {
   const [items, setItems] = useState<InventoryItem[]>([])
@@ -42,6 +44,7 @@ export default function StockManagement() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [departmentFilter, setDepartmentFilter] = useState("all")
+  const [hotelFilter, setHotelFilter] = useState("all")
   const [showAddDialog, setShowAddDialog] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [showMovementDialog, setShowMovementDialog] = useState(false)
@@ -53,6 +56,7 @@ export default function StockManagement() {
   // Form state for add/edit
   const [formData, setFormData] = useState({
     nombre: "",
+    hotel: "",
     departamento: "",
     cantidad_actual: 0,
     unidad: "",
@@ -73,7 +77,7 @@ export default function StockManagement() {
 
   useEffect(() => {
     filterItems()
-  }, [items, searchTerm, departmentFilter])
+  }, [items, searchTerm, departmentFilter, hotelFilter])
 
   const fetchItems = async () => {
     try {
@@ -89,6 +93,10 @@ export default function StockManagement() {
 
   const filterItems = () => {
     let filtered = items
+
+    if (hotelFilter !== "all") {
+      filtered = filtered.filter((item) => item.hotel === hotelFilter)
+    }
 
     if (departmentFilter !== "all") {
       filtered = filtered.filter((item) => item.departamento === departmentFilter)
@@ -176,6 +184,7 @@ export default function StockManagement() {
     setSelectedItem(item)
     setFormData({
       nombre: item.nombre,
+      hotel: item.hotel || "",
       departamento: item.departamento,
       cantidad_actual: item.cantidad_actual,
       unidad: item.unidad,
@@ -201,6 +210,7 @@ export default function StockManagement() {
   const resetForm = () => {
     setFormData({
       nombre: "",
+      hotel: "",
       departamento: "",
       cantidad_actual: 0,
       unidad: "",
@@ -243,7 +253,7 @@ export default function StockManagement() {
 
         {/* Filters */}
         <Card className="p-6 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
               <Input
@@ -253,6 +263,19 @@ export default function StockManagement() {
                 className="pl-10"
               />
             </div>
+            <Select value={hotelFilter} onValueChange={setHotelFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder="Filtrar por hotel" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los hoteles</SelectItem>
+                {HOTELES.map((hotel) => (
+                  <SelectItem key={hotel} value={hotel}>
+                    {hotel}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
               <SelectTrigger>
                 <SelectValue placeholder="Filtrar por departamento" />
@@ -275,6 +298,7 @@ export default function StockManagement() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>Hotel</TableHead>
                   <TableHead>Producto</TableHead>
                   <TableHead>Departamento</TableHead>
                   <TableHead>Stock</TableHead>
@@ -288,19 +312,26 @@ export default function StockManagement() {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8">
+                    <TableCell colSpan={9} className="text-center py-8">
                       Cargando...
                     </TableCell>
                   </TableRow>
                 ) : filteredItems.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8">
+                    <TableCell colSpan={9} className="text-center py-8">
                       No se encontraron productos
                     </TableCell>
                   </TableRow>
                 ) : (
                   filteredItems.map((item) => (
                     <TableRow key={item.id} className={isLowStock(item) ? "bg-red-50" : ""}>
+                      <TableCell>
+                        {item.hotel ? (
+                          <Badge variant="outline">{item.hotel}</Badge>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">-</span>
+                        )}
+                      </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           {isLowStock(item) && <AlertTriangle className="h-4 w-4 text-red-600" />}
@@ -377,12 +408,27 @@ export default function StockManagement() {
             <DialogHeader>
               <DialogTitle>{showEditDialog ? "Editar Producto" : "Añadir Producto"}</DialogTitle>
             </DialogHeader>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
+            <div className="grid grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label>Hotel *</Label>
+                <Select value={formData.hotel} onValueChange={(value) => setFormData({ ...formData, hotel: value })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar hotel" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {HOTELES.map((hotel) => (
+                      <SelectItem key={hotel} value={hotel}>
+                        {hotel}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
                 <Label>Nombre del Producto *</Label>
                 <Input value={formData.nombre} onChange={(e) => setFormData({ ...formData, nombre: e.target.value })} />
               </div>
-              <div>
+              <div className="space-y-2">
                 <Label>Departamento *</Label>
                 <Select
                   value={formData.departamento}
@@ -400,7 +446,7 @@ export default function StockManagement() {
                   </SelectContent>
                 </Select>
               </div>
-              <div>
+              <div className="space-y-2">
                 <Label>Cantidad Actual *</Label>
                 <Input
                   type="number"
@@ -408,7 +454,7 @@ export default function StockManagement() {
                   onChange={(e) => setFormData({ ...formData, cantidad_actual: Number.parseInt(e.target.value) || 0 })}
                 />
               </div>
-              <div>
+              <div className="space-y-2">
                 <Label>Unidad de Medida *</Label>
                 <Select value={formData.unidad} onValueChange={(value) => setFormData({ ...formData, unidad: value })}>
                   <SelectTrigger>
@@ -423,21 +469,21 @@ export default function StockManagement() {
                   </SelectContent>
                 </Select>
               </div>
-              <div>
+              <div className="space-y-2">
                 <Label>Ubicación</Label>
                 <Input
                   value={formData.ubicacion}
                   onChange={(e) => setFormData({ ...formData, ubicacion: e.target.value })}
                 />
               </div>
-              <div>
+              <div className="space-y-2">
                 <Label>Proveedor</Label>
                 <Input
                   value={formData.proveedor}
                   onChange={(e) => setFormData({ ...formData, proveedor: e.target.value })}
                 />
               </div>
-              <div>
+              <div className="space-y-2">
                 <Label>Enlace de Compra</Label>
                 <Input
                   value={formData.enlace_compra}
@@ -445,7 +491,7 @@ export default function StockManagement() {
                   placeholder="https://..."
                 />
               </div>
-              <div>
+              <div className="space-y-2">
                 <Label>Email de Pedido</Label>
                 <Input
                   type="email"
@@ -453,7 +499,7 @@ export default function StockManagement() {
                   onChange={(e) => setFormData({ ...formData, email_pedido: e.target.value })}
                 />
               </div>
-              <div>
+              <div className="space-y-2">
                 <Label>Frecuencia de Pedido</Label>
                 <Select
                   value={formData.frecuencia_pedido}
@@ -471,7 +517,7 @@ export default function StockManagement() {
                   </SelectContent>
                 </Select>
               </div>
-              <div>
+              <div className="space-y-2">
                 <Label>Stock Mínimo *</Label>
                 <Input
                   type="number"
@@ -479,14 +525,14 @@ export default function StockManagement() {
                   onChange={(e) => setFormData({ ...formData, stock_minimo: Number.parseInt(e.target.value) || 0 })}
                 />
               </div>
-              <div>
+              <div className="space-y-2">
                 <Label>Responsable</Label>
                 <Input
                   value={formData.responsable}
                   onChange={(e) => setFormData({ ...formData, responsable: e.target.value })}
                 />
               </div>
-              <div className="col-span-2">
+              <div className="col-span-2 space-y-2">
                 <Label>Instrucciones de Pedido</Label>
                 <Textarea
                   value={formData.instrucciones_pedido}
@@ -494,7 +540,7 @@ export default function StockManagement() {
                   rows={2}
                 />
               </div>
-              <div className="col-span-2">
+              <div className="col-span-2 space-y-2">
                 <Label>Notas</Label>
                 <Textarea
                   value={formData.notas}

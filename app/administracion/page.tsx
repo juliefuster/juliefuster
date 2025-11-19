@@ -1,7 +1,7 @@
 "use client"
 
 import { Card } from "@/components/ui/card"
-import { Package, ArrowLeft } from "lucide-react"
+import { Package, ArrowLeft, Users, BookOpen } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 
@@ -37,6 +37,34 @@ export default function AdministracionMenu() {
                 <div>
                   <h2 className="text-3xl font-bold text-slate-900 mb-2">Gestión de Stock</h2>
                   <p className="text-slate-600">Control de inventario y pedidos</p>
+                </div>
+              </div>
+            </Card>
+          </Link>
+
+          <Link href="/administracion/contactos" className="group">
+            <Card className="p-10 bg-white hover:shadow-2xl transition-all duration-300 border-2 border-slate-200 hover:border-orange-600 cursor-pointer transform hover:-translate-y-1">
+              <div className="flex flex-col items-center text-center gap-6">
+                <div className="p-6 bg-orange-600 rounded-2xl group-hover:scale-110 transition-transform">
+                  <Users className="h-12 w-12 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-3xl font-bold text-slate-900 mb-2">Gestión de Contactos</h2>
+                  <p className="text-slate-600">Base de datos de contactos y proveedores</p>
+                </div>
+              </div>
+            </Card>
+          </Link>
+
+          <Link href="/administracion/guia-virtual" className="group">
+            <Card className="p-10 bg-white hover:shadow-2xl transition-all duration-300 border-2 border-slate-200 hover:border-purple-600 cursor-pointer transform hover:-translate-y-1">
+              <div className="flex flex-col items-center text-center gap-6">
+                <div className="p-6 bg-purple-600 rounded-2xl group-hover:scale-110 transition-transform">
+                  <BookOpen className="h-12 w-12 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-3xl font-bold text-slate-900 mb-2">Guía Virtual</h2>
+                  <p className="text-slate-600">Procedimientos y documentación interna</p>
                 </div>
               </div>
             </Card>

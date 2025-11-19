@@ -11,24 +11,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Checkbox } from "@/components/ui/checkbox"
 import Link from "next/link"
-import { useParams } from "next/navigation"
-import {
-  Droplets,
-  Wind,
-  Wrench,
-  Lightbulb,
-  Bug,
-  Flame,
-  Zap,
-  Bell,
-  AlertTriangle,
-  CheckCircle2,
-  Clock,
-  Calendar,
-  ArrowLeft,
-  Printer,
-  History,
-} from "lucide-react"
+import { useParams } from 'next/navigation'
+import { Droplets, Wind, Wrench, Lightbulb, Bug, Flame, Zap, Bell, AlertTriangle, CheckCircle2, Clock, Calendar, ArrowLeft, Printer, History } from 'lucide-react'
 
 import { ROOM_NUMBERS } from "@/lib/rooms" // ⬅️ ESTA LÍNEA AQUÍ ARRIBA, NO ABAJO
 
@@ -1029,6 +1013,43 @@ export default function PreventiveMaintenance() {
                   </Link>
                 </CardContent>
               </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Wrench className="h-5 w-5 text-orange-600" />
+                    Historial: Reparaciones Hidrokit LG
+                  </CardTitle>
+                  <CardDescription>Ver todas las reparaciones del Hidrokit LG</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Link href={`/${hotel}/preventivo/reparaciones/hidrokit_lg`}>
+                    <Button className="w-full">
+                      <History className="h-4 w-4 mr-2" />
+                      Ver Historial
+                    </Button>
+                  </Link>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Wrench className="h-5 w-5 text-purple-600" />
+                    Historial: Reparaciones Ascensor Schindler
+                  </CardTitle>
+                  <CardDescription>Ver todas las reparaciones del ascensor</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Link href={`/${hotel}/preventivo/reparaciones/ascensor_schindler`}>
+                    <Button className="w-full">
+                      <History className="h-4 w-4 mr-2" />
+                      Ver Historial
+                    </Button>
+                  </Link>
+                </CardContent>
+              </Card>
+              {/* </CHANGE> */}
             </div>
           </TabsContent>
         </Tabs>

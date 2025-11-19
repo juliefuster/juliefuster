@@ -3,8 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "build": "pnpm approve-builds && pnpm build:next",
-    "build:next": "next build",
+    "build": "pnpm approve-builds && next build",
     "dev": "next dev",
     "lint": "next lint",
     "start": "next start"

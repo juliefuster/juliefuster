@@ -5,7 +5,19 @@ export async function GET() {
   try {
     const supabase = await createServerClient()
 
-    const { data, error } = await supabase.from("inventario").select("*").order("nombre", { ascending: true })
+    let { data, error } = await supabase
+      .from("inventario")
+      .select("*")
+      .order("hotel", { ascending: true })
+      .order("nombre", { ascending: true })
+
+    if (error && error.message.includes("column inventario.hotel does not exist")) {
+      console.log("[v0] Hotel column not found, fetching without it")
+      const fallback = await supabase.from("inventario").select("*").order("nombre", { ascending: true })
+
+      data = fallback.data
+      error = fallback.error
+    }
 
     if (error) throw error
 
@@ -25,6 +37,7 @@ export async function POST(request: Request) {
       .from("inventario")
       .insert([
         {
+          hotel: body.hotel,
           nombre: body.nombre,
           departamento: body.departamento,
           cantidad_actual: body.cantidad_actual,
