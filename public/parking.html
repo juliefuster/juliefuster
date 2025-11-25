@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Parking - Hotel</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 30px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+            text-align: center;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        /* Formulario */
+        .form-section {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 25px;
+            margin-bottom: 30px;
+        }
+
+        .form-title {
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 6px;
+        }
+
+        .form-group label .required {
+            color: #e74c3c;
+        }
+
+        .form-group input,
+        .form-group select {
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        .btn-print {
+            background: #3498db;
+            color: white;
+        }
+
+        .btn-print:hover {
+            background: #2980b9;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        /* Alertas */
+        .alert {
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .alert-warning {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            color: #856404;
+        }
+
+        .alert-warning h3 {
+            font-size: 16px;
+            margin-bottom: 10px;
+            color: #856404;
+        }
+
+        .alert-warning ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .alert-warning li {
+            padding: 8px 0;
+            border-bottom: 1px solid #ffe69c;
+        }
+
+        .alert-warning li:last-child {
+            border-bottom: none;
+        }
+
+        .alert-warning strong {
+            color: #333;
+        }
+
+        /* Filtros */
+        .filters {
+            background: #f8f9fa;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .filter-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .filter-checkbox input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .filter-checkbox label {
+            font-size: 14px;
+            font-weight: 600;
+            color: #555;
+            cursor: pointer;
+        }
+
+        /* Tabla */
+        .table-container {
+            overflow-x: auto;
+            margin-bottom: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        thead {
+            background: #667eea;
+            color: white;
+        }
+
+        th {
+            padding: 12px 8px;
+            text-align: left;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        td {
+            padding: 12px 8px;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        tbody tr {
+            transition: background-color 0.2s;
+        }
+
+        tbody tr:hover {
+            background-color: #f8f9fa;
+        }
+
+        tbody tr:nth-child(even) {
+            background-color: #fafbfc;
+        }
+
+        tbody tr:nth-child(even):hover {
+            background-color: #f8f9fa;
+        }
+
+        .row-cobrado {
+            background-color: #d4edda !important;
+        }
+
+        .row-cobrado:hover {
+            background-color: #c3e6cb !important;
+        }
+
+        .row-warning {
+            background-color: #fff3cd !important;
+        }
+
+        .row-warning:hover {
+            background-color: #ffe69c !important;
+        }
+
+        .checkbox-cell input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .actions-cell {
+            display: flex;
+            gap: 5px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+
+        .empty-state svg {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 20px;
+            opacity: 0.3;
+        }
+
+        /* Vista de impresión */
+        .print-view {
+            display: none;
+        }
+
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            .print-view, .print-view * {
+                visibility: visible;
+            }
+            .print-view {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                display: block !important;
+            }
+        }
+
+        .print-content {
+            padding: 40px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .print-content h2 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #333;
+        }
+
+        .print-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 40px;
+        }
+
+        .print-table td {
+            padding: 12px;
+            border: 1px solid #333;
+        }
+
+        .print-table td:first-child {
+            font-weight: bold;
+            width: 200px;
+            background: #f5f5f5;
+        }
+
+        .sello-box {
+            border: 2px dashed #333;
+            padding: 60px;
+            text-align: center;
+            margin-top: 40px;
+        }
+
+        .sello-box p {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        @media screen and (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+
+            table {
+                font-size: 11px;
+            }
+
+            th, td {
+                padding: 8px 4px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚗 Gestión de Parking - Hotel</h1>
+        <p class="subtitle">Sistema de control de parkings para clientes</p>
+
+        <!-- Formulario de alta -->
+        <div class="form-section">
+            <div class="form-title">➕ Nuevo registro de parking</div>
+            <form id="parkingForm">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Cliente <span class="required">*</span></label>
+                        <input type="text" id="cliente" name="cliente" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Nº Habitación <span class="required">*</span></label>
+                        <input type="text" id="habitacion" name="habitacion" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Check-in Coche <span class="required">*</span></label>
+                        <input type="datetime-local" id="checkinCoche" name="checkinCoche" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Check-out Coche</label>
+                        <input type="datetime-local" id="checkoutCoche" name="checkoutCoche">
+                    </div>
+                    <div class="form-group">
+                        <label>Check-in Cliente (Hotel) <span class="required">*</span></label>
+                        <input type="date" id="checkinCliente" name="checkinCliente" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Check-out Cliente (Hotel) <span class="required">*</span></label>
+                        <input type="date" id="checkoutCliente" name="checkoutCliente" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Hecho por <span class="required">*</span></label>
+                        <input type="text" id="hechoPor" name="hechoPor" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Nº de Factura</label>
+                        <input type="text" id="facturaNumero" name="facturaNumero">
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Añadir Registro</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Alerta de check-outs próximos -->
+        <div id="alertaCheckouts"></div>
+
+        <!-- Filtros -->
+        <div class="filters">
+            <div class="filter-checkbox">
+                <input type="checkbox" id="filtroPendientes">
+                <label for="filtroPendientes">Mostrar sólo pendientes de cobrar</label>
+            </div>
+            <button class="btn btn-danger btn-small" onclick="borrarTodo()">🗑️ Borrar todos los registros</button>
+        </div>
+
+        <!-- Tabla de registros -->
+        <div class="table-container">
+            <table id="tablaParking">
+                <thead>
+                    <tr>
+                        <th>Cliente</th>
+                        <th>Nº Hab.</th>
+                        <th>Check-in Coche</th>
+                        <th>Check-out Coche</th>
+                        <th>Check-in Cliente</th>
+                        <th>Check-out Cliente</th>
+                        <th>Hecho por</th>
+                        <th>Cobrado</th>
+                        <th>Nº Factura</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaBody">
+                    <!-- Los registros se cargan dinámicamente -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Vista de impresión (oculta) -->
+    <div class="print-view" id="printView">
+        <div class="print-content" id="printContent">
+            <!-- Se genera dinámicamente al imprimir -->
+        </div>
+    </div>
+
+    <script>
+        // Clave de localStorage
+        const STORAGE_KEY = 'hotelParkingRegistros';
+
+        // Cargar registros desde localStorage
+        function cargarRegistros() {
+            const data = localStorage.getItem(STORAGE_KEY);
+            return data ? JSON.parse(data) : [];
+        }
+
+        // Guardar registros en localStorage
+        function guardarRegistros(registros) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(registros));
+        }
+
+        // Generar ID único
+        function generarId() {
+            return Date.now().toString(36) + Math.random().toString(36).substr(2);
+        }
+
+        // Formatear fecha y hora
+        function formatearFechaHora(datetime) {
+            if (!datetime) return '-';
+            const fecha = new Date(datetime);
+            return fecha.toLocaleString('es-ES', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        // Formatear solo fecha
+        function formatearFecha(date) {
+            if (!date) return '-';
+            const fecha = new Date(date);
+            return fecha.toLocaleDateString('es-ES', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+            });
+        }
+
+        // Verificar si es hoy o dentro de 24 horas
+        function esCheckoutProximo(checkoutCliente) {
+            if (!checkoutCliente) return false;
+            
+            const hoy = new Date();
+            hoy.setHours(0, 0, 0, 0);
+            
+            const manana = new Date(hoy);
+            manana.setDate(manana.getDate() + 1);
+            
+            const fechaCheckout = new Date(checkoutCliente);
+            fechaCheckout.setHours(0, 0, 0, 0);
+            
+            return fechaCheckout.getTime() === hoy.getTime() || fechaCheckout.getTime() === manana.getTime();
+        }
+
+        // Mostrar alerta de check-outs próximos
+        function mostrarAlertaCheckouts() {
+            const registros = cargarRegistros();
+            const checkoutsPendientes = registros.filter(r => 
+                !r.cobrado && esCheckoutProximo(r.checkoutCliente)
+            );
+
+            const alertaDiv = document.getElementById('alertaCheckouts');
+            
+            if (checkoutsPendientes.length === 0) {
+                alertaDiv.innerHTML = '';
+                return;
+            }
+
+            let html = '<div class="alert alert-warning">';
+            html += '<h3>⚠️ Clientes con check-out próximo SIN parking cobrado</h3>';
+            html += '<ul>';
+            
+            checkoutsPendientes.forEach(r => {
+                html += `<li>`;
+                html += `<strong>${r.cliente}</strong> - Hab. ${r.habitacion} `;
+                html += `(Sale: ${formatearFecha(r.checkoutCliente)})`;
+                html += `</li>`;
+            });
+            
+            html += '</ul>';
+            html += '</div>';
+            
+            alertaDiv.innerHTML = html;
+        }
+
+        // Renderizar tabla
+        function renderizarTabla() {
+            let registros = cargarRegistros();
+            const tbody = document.getElementById('tablaBody');
+            const filtroPendientes = document.getElementById('filtroPendientes').checked;
+
+            // Aplicar filtro
+            if (filtroPendientes) {
+                registros = registros.filter(r => !r.cobrado);
+            }
+
+            // Si no hay registros
+            if (registros.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="10">
+                            <div class="empty-state">
+                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                <p>No hay registros${filtroPendientes ? ' pendientes' : ''}</p>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            // Renderizar filas
+            tbody.innerHTML = registros.map(r => {
+                const esProximo = !r.cobrado && esCheckoutProximo(r.checkoutCliente);
+                const claseFila = r.cobrado ? 'row-cobrado' : (esProximo ? 'row-warning' : '');
+                
+                return `
+                    <tr class="${claseFila}">
+                        <td>${r.cliente}</td>
+                        <td>${r.habitacion}</td>
+                        <td>${formatearFechaHora(r.checkinCoche)}</td>
+                        <td>${formatearFechaHora(r.checkoutCoche)}</td>
+                        <td>${formatearFecha(r.checkinCliente)}</td>
+                        <td>${formatearFecha(r.checkoutCliente)}</td>
+                        <td>${r.hechoPor}</td>
+                        <td class="checkbox-cell">
+                            <input type="checkbox" 
+                                   ${r.cobrado ? 'checked' : ''} 
+                                   onchange="toggleCobrado('${r.id}')">
+                        </td>
+                        <td>${r.facturaNumero || '-'}</td>
+                        <td class="actions-cell">
+                            <button class="btn btn-print btn-small" onclick="imprimirRegistro('${r.id}')">
+                                🖨️ Imprimir
+                            </button>
+                            <button class="btn btn-danger btn-small" onclick="eliminarRegistro('${r.id}')">
+                                🗑️
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // Añadir registro
+        document.getElementById('parkingForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const nuevoRegistro = {
+                id: generarId(),
+                cliente: formData.get('cliente'),
+                habitacion: formData.get('habitacion'),
+                checkinCoche: formData.get('checkinCoche'),
+                checkoutCoche: formData.get('checkoutCoche'),
+                checkinCliente: formData.get('checkinCliente'),
+                checkoutCliente: formData.get('checkoutCliente'),
+                hechoPor: formData.get('hechoPor'),
+                cobrado: false,
+                facturaNumero: formData.get('facturaNumero') || null,
+                creadoEn: new Date().toISOString()
+            };
+
+            const registros = cargarRegistros();
+            registros.push(nuevoRegistro);
+            guardarRegistros(registros);
+
+            // Limpiar formulario
+            e.target.reset();
+
+            // Actualizar vista
+            renderizarTabla();
+            mostrarAlertaCheckouts();
+        });
+
+        // Toggle cobrado
+        function toggleCobrado(id) {
+            const registros = cargarRegistros();
+            const registro = registros.find(r => r.id === id);
+            
+            if (!registro) return;
+
+            // Si se va a marcar como cobrado y no tiene factura
+            if (!registro.cobrado && !registro.facturaNumero) {
+                const numeroFactura = prompt('Este registro no tiene número de factura.\nPor favor, introduce el número de factura:');
+                
+                if (!numeroFactura || numeroFactura.trim() === '') {
+                    // Cancelado o vacío: no hacer nada
+                    renderizarTabla(); // Re-renderizar para desmarcar el checkbox
+                    return;
+                }
+                
+                // Guardar el número de factura
+                registro.facturaNumero = numeroFactura.trim();
+            }
+
+            // Cambiar estado de cobrado
+            registro.cobrado = !registro.cobrado;
+            guardarRegistros(registros);
+            
+            renderizarTabla();
+            mostrarAlertaCheckouts();
+        }
+
+        // Eliminar registro
+        function eliminarRegistro(id) {
+            if (!confirm('¿Estás seguro de que deseas eliminar este registro?')) {
+                return;
+            }
+
+            let registros = cargarRegistros();
+            registros = registros.filter(r => r.id !== id);
+            guardarRegistros(registros);
+            
+            renderizarTabla();
+            mostrarAlertaCheckouts();
+        }
+
+        // Imprimir registro
+        function imprimirRegistro(id) {
+            const registros = cargarRegistros();
+            const registro = registros.find(r => r.id === id);
+            
+            if (!registro) return;
+
+            const printContent = document.getElementById('printContent');
+            printContent.innerHTML = `
+                <h2>📋 Registro Parking Hotel</h2>
+                <table class="print-table">
+                    <tr>
+                        <td>Cliente</td>
+                        <td>${registro.cliente}</td>
+                    </tr>
+                    <tr>
+                        <td>Nº Habitación</td>
+                        <td>${registro.habitacion}</td>
+                    </tr>
+                    <tr>
+                        <td>Check-in Coche</td>
+                        <td>${formatearFechaHora(registro.checkinCoche)}</td>
+                    </tr>
+                    <tr>
+                        <td>Check-out Coche</td>
+                        <td>${formatearFechaHora(registro.checkoutCoche)}</td>
+                    </tr>
+                    <tr>
+                        <td>Check-in Cliente (Hotel)</td>
+                        <td>${formatearFecha(registro.checkinCliente)}</td>
+                    </tr>
+                    <tr>
+                        <td>Check-out Cliente (Hotel)</td>
+                        <td>${formatearFecha(registro.checkoutCliente)}</td>
+                    </tr>
+                    <tr>
+                        <td>Hecho por</td>
+                        <td>${registro.hechoPor}</td>
+                    </tr>
+                    <tr>
+                        <td>Cobrado</td>
+                        <td>${registro.cobrado ? 'SÍ' : 'NO'}</td>
+                    </tr>
+                    <tr>
+                        <td>Nº de Factura</td>
+                        <td>${registro.facturaNumero || '-'}</td>
+                    </tr>
+                </table>
+                
+                <div class="sello-box">
+                    <p><strong>Espacio para sello del hotel</strong></p>
+                </div>
+            `;
+
+            window.print();
+        }
+
+        // Borrar todo
+        function borrarTodo() {
+            if (!confirm('⚠️ ATENCIÓN: Esto eliminará TODOS los registros de parking.\n\n¿Estás completamente seguro?')) {
+                return;
+            }
+
+            localStorage.removeItem(STORAGE_KEY);
+            renderizarTabla();
+            mostrarAlertaCheckouts();
+        }
+
+        // Filtro de pendientes
+        document.getElementById('filtroPendientes').addEventListener('change', renderizarTabla);
+
+        // Inicializar al cargar la página
+        window.addEventListener('DOMContentLoaded', function() {
+            renderizarTabla();
+            mostrarAlertaCheckouts();
+            
+            // Establecer fecha y hora actual por defecto en check-in coche
+            const now = new Date();
+            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+            document.getElementById('checkinCoche').value = now.toISOString().slice(0, 16);
+        });
+    </script>
+</body>
+</html>

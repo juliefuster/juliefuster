@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "build": "pnpm approve-builds && next build",
+    "build": "next build",
     "dev": "next dev",
     "lint": "next lint",
     "start": "next start"
@@ -80,5 +80,11 @@
     "tailwindcss": "^4.1.9",
     "tw-animate-css": "1.3.3",
     "typescript": "^5"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@tailwindcss/oxide",
+      "sharp"
+    ]
   }
 }
