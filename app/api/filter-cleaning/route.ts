@@ -43,15 +43,15 @@ export async function GET(request: NextRequest) {
           const diffMs = recordDate.getTime() - previousCleaningDate.getTime()
           diferencia_dias = Math.floor(diffMs / (1000 * 60 * 60 * 24))
 
-          // Filter cleaning cycle is 15 days (biweekly)
-          if (diferencia_dias < 15) {
+          // Filter cleaning cycle is 30 days (monthly)
+          if (diferencia_dias < 30) {
             estado = "adelantada"
           }
         }
 
-        // Calculate next_date (15 days after current cleaning)
+        // Calculate next_date (30 days after current cleaning)
         const nextDate = new Date(recordDate)
-        nextDate.setDate(nextDate.getDate() + 15)
+        nextDate.setDate(nextDate.getDate() + 30)
 
         roomEntries.push({
           id: `${record.id}-${room}`,

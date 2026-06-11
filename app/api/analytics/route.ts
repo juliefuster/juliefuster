@@ -90,7 +90,7 @@ export async function GET(request: NextRequest) {
             type: "Limpieza de filtros",
             date: new Date(f.created_at),
             operator: f.operator_name,
-            expectedInterval: 15,
+            expectedInterval: 30,
             rooms: f.cleaned_filters,
             hotel,
           })),
@@ -155,7 +155,7 @@ export async function GET(request: NextRequest) {
     }
 
     const fumigationOnTime = calcOnTime(filteredTasks, "Fumigación", 90) ?? 0
-    const filterOnTime = calcOnTime(filteredTasks, "Limpieza de filtros", 15) ?? 0
+    const filterOnTime = calcOnTime(filteredTasks, "Limpieza de filtros", 30) ?? 0
     const pumpOnTime = calcOnTime(filteredTasks, "Cambio de bombas", 7) ?? 0
 
     const onTimeArray = [fumigationOnTime, filterOnTime, pumpOnTime].filter((v) => v > 0)

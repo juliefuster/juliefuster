@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
       .order("date", { ascending: false })
       .limit(10)
 
-    // 🌬️ LIMPIEZA DE FILTROS: cada 14 días
+    // 🌬️ LIMPIEZA DE FILTROS: cada 30 días
     const { data: filters } = await supabase
       .from("filter_cleaning_records")
       .select("id, created_at, operator_name, observations, cleaned_filters")
@@ -75,10 +75,10 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // 🌬️ Limpieza filtros (cada 14 días)
+    // 🌬️ Limpieza filtros (cada 30 días)
     if (filters?.length) {
       for (const fl of filters) {
-        const next = new Date(new Date(fl.created_at).getTime() + 14 * 24 * 60 * 60 * 1000)
+        const next = new Date(new Date(fl.created_at).getTime() + 30 * 24 * 60 * 60 * 1000)
         const cleanedRooms =
           Array.isArray(fl.cleaned_filters) ? fl.cleaned_filters
           : typeof fl.cleaned_filters === "string" && fl.cleaned_filters.startsWith("[")
@@ -91,7 +91,7 @@ export async function GET(request: NextRequest) {
           operator_name: fl.operator_name,
           observations: fl.observations,
           rooms: cleanedRooms,
-          frequency: "Quincenal (cada 14 días)",
+          frequency: "Mensual (cada 30 días)",
         })
       }
     }
