@@ -6,14 +6,14 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-
   eslint: {
     ignoreDuringBuilds: true,
   },
-
-  webpack: (config, { dev }) => {
-    if (!dev) {
-      config.optimization.minimize = false
+  webpack: (config) => {
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      xlsx: false,
+      "pdf-lib": false,
     }
     return config
   },
