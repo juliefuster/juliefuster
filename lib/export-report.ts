@@ -1,6 +1,5 @@
-import { PDFDocument, StandardFonts, rgb } from "pdf-lib"
-
 export async function exportReportToPDF(hotel: string, inspections: any[]) {
+  const { PDFDocument, StandardFonts, rgb } = await import("pdf-lib")
   const pdfDoc = await PDFDocument.create()
   let page = pdfDoc.addPage()
   const { height } = page.getSize()

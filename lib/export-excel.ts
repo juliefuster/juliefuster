@@ -1,6 +1,5 @@
-import * as XLSX from "xlsx"
-
-export function exportReportToExcel(hotel: string, inspections: any[]) {
+export async function exportReportToExcel(hotel: string, inspections: any[]) {
+  const XLSX = await import("xlsx")
   const worksheet = XLSX.utils.json_to_sheet(inspections)
   const workbook = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(workbook, worksheet, "Inspecciones")

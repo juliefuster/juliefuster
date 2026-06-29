@@ -162,7 +162,7 @@ export default function RoomInspectionPage() {
     const { data, error } = await supabase.from("room_inspections").select("*").ilike("hotel", `%${hotel}%`)
 
     if (!error && data) {
-      exportReportToExcel(hotel, data)
+      await exportReportToExcel(hotel, data)
     } else {
       console.error("Error al exportar Excel:", error)
     }
