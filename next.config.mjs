@@ -6,6 +6,7 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  serverExternalPackages: ["@supabase/supabase-js", "@supabase/ssr", "@supabase/realtime-js"],
 }
 
 export default nextConfig
